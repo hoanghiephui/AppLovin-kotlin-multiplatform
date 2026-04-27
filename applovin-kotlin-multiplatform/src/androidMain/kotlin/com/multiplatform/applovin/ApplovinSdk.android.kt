@@ -35,6 +35,7 @@ actual class ApplovinSdk {
             onInitialized()
         }
         applovinSdk.settings.setVerboseLogging(debugMode)
+        applovinSdk.settings.isCreativeDebuggerEnabled = debugMode
     }
 
     actual fun createBanner(adUnitId: String): ApplovinAdView {

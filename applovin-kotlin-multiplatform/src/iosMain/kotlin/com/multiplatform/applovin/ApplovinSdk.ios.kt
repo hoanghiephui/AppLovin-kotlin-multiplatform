@@ -2,10 +2,9 @@
 
 package com.multiplatform.applovin
 
+import cocoapods.AppLovinSDK.ALMediationProviderMAX
 import cocoapods.AppLovinSDK.ALSdk
 import cocoapods.AppLovinSDK.ALSdkInitializationConfiguration
-import cocoapods.AppLovinSDK.ALSdkSettings
-import cocoapods.AppLovinSDK.sharedWithSettings
 import com.multiplatform.applovin.ads.ApplovinAdView
 import com.multiplatform.applovin.ads.ApplovinInterstitialAd
 import com.multiplatform.applovin.ads.ApplovinRewardedAd
@@ -20,22 +19,27 @@ actual class ApplovinSdk {
         onInitialized: () -> Unit,
         debugMode: Boolean
     ) {
-        val settings = ALSdkSettings()
-        settings.verboseLoggingEnabled = debugMode
-        settings.userIdentifier = userIdentifier
-
-        val configuration = ALSdkInitializationConfiguration
+        // Create the initialization configuration with mediationProvider set to MAX
+        val initConfig = ALSdkInitializationConfiguration
             .builderWithSdkKey(sdkKey)
+            .apply {
+                mediationProvider = ALMediationProviderMAX
+            }
             .build()
 
-        ALSdk.sharedWithSettings(settings).let { sdk ->
-            sdk?.initializeWithConfiguration(
-                initializationConfiguration = configuration,
-                completionHandler = {
-                    onInitialized()
-                }
-            )
-        }
+        // Configure the SDK settings before SDK initialization
+        val settings = ALSdk.shared().settings
+        settings.userIdentifier = userIdentifier
+        settings.verboseLoggingEnabled = debugMode
+        settings.setCreativeDebuggerEnabled(debugMode)
+
+        // Initialize the SDK with the configuration
+        ALSdk.shared().initializeWithConfiguration(
+            initializationConfiguration = initConfig,
+            completionHandler = {
+                onInitialized()
+            }
+        )
     }
 
     actual fun createBanner(adUnitId: String): ApplovinAdView {

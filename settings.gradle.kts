@@ -5,6 +5,9 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.10.0"
+}
 
 dependencyResolutionManagement {
     repositories {
@@ -14,5 +17,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "applovin-kotlin-multiplatform"
+rootProject.name = "applovin-kmp-root"
 include(":applovin-kotlin-multiplatform")

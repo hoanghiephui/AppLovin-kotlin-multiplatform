@@ -11,6 +11,10 @@ import com.multiplatform.applovin.banner.AdFormat
 import com.multiplatform.applovin.utils.AdListener
 import com.multiplatform.applovin.utils.AdType
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.useContents
+import platform.CoreGraphics.CGRectMake
+import platform.UIKit.UIColor
+import platform.UIKit.UIScreen
 import platform.darwin.NSObject
 
 actual class ApplovinAdView actual constructor(
@@ -27,7 +31,18 @@ actual class ApplovinAdView actual constructor(
                 AdFormat.MREC -> MAAdFormat.mrec()
                 AdFormat.LEADER -> MAAdFormat.leader()
             }
-            nativeAdView = MAAdView(adUnitId, iosAdFormat)
+            // Set an explicit initial frame so ALViewabilityTimer sees a non-zero area.
+            val screenWidth = UIScreen.mainScreen.bounds.useContents { size.width }
+            val (w, h) = when (adFormat) {
+                AdFormat.BANNER -> screenWidth to 50.0
+                AdFormat.LEADER -> screenWidth to 90.0
+                AdFormat.MREC   -> 300.0 to 250.0
+            }
+            nativeAdView = MAAdView(adUnitId, iosAdFormat).apply {
+                setFrame(CGRectMake(0.0, 0.0, w, h))
+                // backgroundColor must be set for banners to be fully functional (per AppLovin docs).
+                backgroundColor = UIColor.clearColor
+            }
         }
         return nativeAdView!!
     }
