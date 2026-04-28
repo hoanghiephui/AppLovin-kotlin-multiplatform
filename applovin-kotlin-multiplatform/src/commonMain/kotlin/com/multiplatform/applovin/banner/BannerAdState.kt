@@ -3,17 +3,22 @@ package com.multiplatform.applovin.banner
 import androidx.compose.runtime.Composable
 
 /**
- * Holds the preloaded state for a MAX standard Banner (full-width × 50 dp) ad.
+ * Holds the preloaded state for a MAX Anchored Adaptive Banner ad.
  *
  * Create an instance via [rememberBannerAd] at the *screen* level (outside any
  * pager, [LazyColumn], or conditional branch) so the native view survives
  * recomposition. Pass the instance to [BannerAdStateView] when you want to
  * display it.
  *
+ * The banner height adapts dynamically based on device type (phone: ~50dp, tablet: ~90dp).
+ * [adaptiveHeightDp] is populated once the ad loads; use it to adjust your layout accordingly.
+ *
  * @property isAdReady `true` once the ad creative has loaded and is ready to display.
+ * @property adaptiveHeightDp Height of the banner in dp; updated when the ad loads.
  */
 expect class BannerAdState {
     val isAdReady: Boolean
+    val adaptiveHeightDp: Float
 }
 
 /**

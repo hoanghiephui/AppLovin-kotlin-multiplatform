@@ -3,26 +3,31 @@ package com.multiplatform.applovin.banner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import com.applovin.mediation.MaxAd
 import com.applovin.mediation.MaxAdFormat
 import com.applovin.mediation.MaxAdViewAdListener
+import com.applovin.mediation.MaxAdViewConfiguration
 import com.applovin.mediation.MaxError
 import com.applovin.mediation.ads.MaxAdView
 
 /**
  * Android implementation of [BannerAdState].
  *
- * @param nativeAdView   the underlying [MaxAdView]; `internal` so [BannerAdStateView]
+ * @param nativeAdView        the underlying [MaxAdView]; `internal` so [BannerAdStateView]
  *   (same module) can pass it directly to [AndroidView] without an extra wrapper.
- * @param isAdReadyState mutable backing state for [isAdReady].
+ * @param isAdReadyState      mutable backing state for [isAdReady].
+ * @param adaptiveHeightDpState mutable backing state for [adaptiveHeightDp].
  */
 actual class BannerAdState(
     internal val nativeAdView: MaxAdView,
     private val isAdReadyState: MutableState<Boolean>,
+    private val adaptiveHeightDpState: MutableState<Float>,
 ) {
     actual val isAdReady: Boolean get() = isAdReadyState.value
+    actual val adaptiveHeightDp: Float get() = adaptiveHeightDpState.value
 }
 
 /**
@@ -40,13 +45,21 @@ actual fun rememberBannerAd(
     onAdLoadFailed: (error: String) -> Unit,
 ): BannerAdState {
     val isAdReady = remember { mutableStateOf(false) }
+    val adaptiveHeightDp = remember { mutableFloatStateOf(50f) } // Default phone height
 
     // Create the MaxAdView once; it lives for the lifetime of the calling composable
     // (typically the full screen), not an inner list-item lifecycle.
     val adView = remember(adUnitId) {
-        MaxAdView(adUnitId, MaxAdFormat.BANNER).apply {
+        val config = MaxAdViewConfiguration.builder()
+            .setAdaptiveType(MaxAdViewConfiguration.AdaptiveType.ANCHORED)
+            .build()
+        MaxAdView(adUnitId, MaxAdFormat.BANNER, config).apply {
             setListener(object : MaxAdViewAdListener {
                 override fun onAdLoaded(ad: MaxAd) {
+                    // Get the adaptive height from AppLovin SDK for this device/orientation.
+                    // This automatically returns ~50dp on phones, ~90dp on tablets.
+                    val adaptiveSize = MaxAdFormat.BANNER.getAdaptiveSize(context)
+                    adaptiveHeightDp.floatValue = adaptiveSize.height.toFloat()
                     isAdReady.value = true
                     onAdLoaded()
                 }
@@ -72,5 +85,11 @@ actual fun rememberBannerAd(
         onDispose { adView.destroy() }
     }
 
-    return remember(adView, isAdReady) { BannerAdState(adView, isAdReady) }
+    return remember(adView, isAdReady, adaptiveHeightDp) {
+        BannerAdState(
+            adView,
+            isAdReady,
+            adaptiveHeightDp
+        )
+    }
 }

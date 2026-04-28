@@ -36,6 +36,9 @@ actual fun BannerAdStateView(
     modifier: Modifier,
 ) {
     val adView = adState.nativeAdView
+    // Use adaptive height from the ad state (updated when ad loads).
+    val adaptiveHeightDp = adState.adaptiveHeightDp.dp
+    
     AndroidView(
         factory = { ctx ->
             FrameLayout(ctx).also { container ->
@@ -50,6 +53,6 @@ actual fun BannerAdStateView(
                 )
             }
         },
-        modifier = modifier.fillMaxWidth().height(52.dp),
+        modifier = modifier.fillMaxWidth().height(adaptiveHeightDp),
     )
 }

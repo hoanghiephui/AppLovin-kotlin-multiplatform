@@ -11,26 +11,32 @@ import cocoapods.AppLovinSDK.MAAd
 import cocoapods.AppLovinSDK.MAAdFormat
 import cocoapods.AppLovinSDK.MAAdView
 import cocoapods.AppLovinSDK.MAAdViewAdDelegateProtocol
+import cocoapods.AppLovinSDK.MAAdViewAdaptiveType
+import cocoapods.AppLovinSDK.MAAdViewConfiguration
 import cocoapods.AppLovinSDK.MAError
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import platform.CoreGraphics.CGRectMake
 import platform.UIKit.UIColor
 import platform.UIKit.UIScreen
+import platform.UIKit.UIView
 import platform.darwin.NSObject
 
 /**
  * iOS implementation of [BannerAdState].
  *
- * @param nativeAdView   the underlying [MAAdView]; `internal` so [BannerAdStateView]
- *   (same module) can pass it directly to [UIKitView] without an extra wrapper.
- * @param isAdReadyState mutable backing state for [isAdReady].
+ * @param nativeAdView        the underlying [MAAdView]; `internal` so [BannerAdStateView]
+ *   can pass it directly to [UIKitView] without an extra wrapper.
+ * @param isAdReadyState      mutable backing state for [isAdReady].
+ * @param adaptiveHeightDpState mutable backing state for [adaptiveHeightDp].
  */
 actual class BannerAdState(
     internal val nativeAdView: MAAdView,
     private val isAdReadyState: MutableState<Boolean>,
+    private val adaptiveHeightDpState: MutableState<Float>,
 ) {
     actual val isAdReady: Boolean get() = isAdReadyState.value
+    actual val adaptiveHeightDp: Float get() = adaptiveHeightDpState.value
 }
 
 /**
@@ -51,11 +57,21 @@ actual fun rememberBannerAd(
     onAdLoadFailed: (error: String) -> Unit,
 ): BannerAdState {
     val isAdReady = remember { mutableStateOf(false) }
+    val adaptiveHeightDp = remember { mutableStateOf(50f) } // Default iPhone height
 
     // Create the MAAdView once; it lives for the lifetime of the calling composable.
     val adView = remember(adUnitId) {
         val screenWidth = UIScreen.mainScreen.bounds.useContents { size.width }
-        MAAdView(adUnitId, MAAdFormat.banner()).apply {
+
+        // Build Anchored Adaptive Banner config before creating the view.
+        // Matches the Swift pattern:
+        //   let config = MAAdViewConfiguration { builder in builder.adaptiveType = .anchored }
+        //   adView = MAAdView(adUnitIdentifier: id, adFormat: .banner, configuration: config)
+        val config = MAAdViewConfiguration.configurationWithBuilderBlock { builder ->
+            builder?.setAdaptiveType(MAAdViewAdaptiveType.MAAdViewAdaptiveTypeAnchored)
+        }
+
+        MAAdView(adUnitId, MAAdFormat.banner(), config).apply {
             // Set an explicit banner frame so ALViewabilityTimer sees a non-zero area
             // even before the view is embedded in the Compose UIKit hierarchy.
             setFrame(CGRectMake(0.0, 0.0, screenWidth, 50.0))
@@ -68,7 +84,8 @@ actual fun rememberBannerAd(
     // MAAdView.delegate is an ObjC `weak` property and does NOT retain the object.
     val delegate = remember(adView) {
         BannerStateAdDelegate(
-            onAdLoaded = {
+            onAdLoaded = { heightDp ->
+                adaptiveHeightDp.value = heightDp
                 isAdReady.value = true
                 onAdLoaded()
             },
@@ -89,7 +106,14 @@ actual fun rememberBannerAd(
         }
     }
 
-    return remember(adView, isAdReady) { BannerAdState(adView, isAdReady) }
+    return remember(adView, isAdReady, adaptiveHeightDp) {
+        BannerAdState(
+            adView,
+            isAdReady,
+            adaptiveHeightDp
+        )
+    }
+
 }
 
 // ---------------------------------------------------------------------------
@@ -98,12 +122,15 @@ actual fun rememberBannerAd(
 // ---------------------------------------------------------------------------
 
 private class BannerStateAdDelegate(
-    private val onAdLoaded: () -> Unit,
+    private val onAdLoaded: (Float) -> Unit,
     private val onAdLoadFailed: (String) -> Unit,
 ) : NSObject(), MAAdViewAdDelegateProtocol {
 
     override fun didLoadAd(ad: MAAd) {
-        onAdLoaded()
+        // Get the adaptive banner height from the ad size after it loads.
+        // This automatically returns ~50pt on iPhones, ~90pt on iPads.
+        val adaptiveHeight = ad.size.useContents { height.toFloat() }
+        onAdLoaded(adaptiveHeight)
     }
 
     override fun didFailToLoadAdForAdUnitIdentifier(
