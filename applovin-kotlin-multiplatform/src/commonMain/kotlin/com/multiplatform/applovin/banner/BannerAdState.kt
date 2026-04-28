@@ -3,7 +3,7 @@ package com.multiplatform.applovin.banner
 import androidx.compose.runtime.Composable
 
 /**
- * Holds the pre-loaded state for a MAX standard Banner (full-width × 50 dp) ad.
+ * Holds the preloaded state for a MAX standard Banner (full-width × 50 dp) ad.
  *
  * Create an instance via [rememberBannerAd] at the *screen* level (outside any
  * pager, [LazyColumn], or conditional branch) so the native view survives

@@ -28,6 +28,6 @@ actual fun BannerAdStateView(
         factory = { adState.nativeAdView },
         modifier = modifier
             .fillMaxWidth()
-            .height(50.dp),
+            .height(52.dp),
     )
 }

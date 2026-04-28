@@ -38,7 +38,7 @@ actual class BannerAdState(
  *
  * Creates a [MAAdView] once with an explicit full-width × 50 pt frame so
  * [ALViewabilityTimer] does not log a "0 area" error. [loadAd] is called inside
- * [DisposableEffect] to pre-load the creative before the placement is visible.
+ * [DisposableEffect] to preload the creative before the placement is visible.
  *
  * Note: [MAAdView.delegate] is an ObjC `weak` property and does NOT retain the
  * assigned object. The delegate is stored in [remember] so Kotlin/Native's ARC-based
