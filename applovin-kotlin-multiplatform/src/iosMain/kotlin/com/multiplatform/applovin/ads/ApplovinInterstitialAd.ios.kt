@@ -21,15 +21,16 @@ actual class ApplovinInterstitialAd actual constructor(
     actual val isReady: Boolean
         get() = nativeAd?.isReady() ?: false
 
-    internal fun initialize() {
+    actual fun initialize() {
         if (nativeAd == null) {
             nativeAd = MAInterstitialAd(adUnitId)
         }
     }
 
     actual fun loadAd() {
+        // Lazily initialize so callers do not need to call initialize() explicitly.
+        initialize()
         nativeAd?.loadAd()
-            ?: throw IllegalStateException("Ad not initialized. SDK must be initialized first.")
     }
 
     actual fun showAd() {
