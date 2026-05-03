@@ -33,7 +33,6 @@ actual class ApplovinSdk {
 
         val applovinSdk = AppLovinSdk.getInstance(context)
         applovinSdk.settings.userIdentifier = userIdentifier
-        applovinSdk.showMediationDebugger()
         applovinSdk.initialize(initConfig) {
             onInitialized()
         }
