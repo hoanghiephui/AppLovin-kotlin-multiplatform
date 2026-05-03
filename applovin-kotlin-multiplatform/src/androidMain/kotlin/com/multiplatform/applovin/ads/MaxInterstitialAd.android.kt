@@ -1,5 +1,6 @@
 package com.multiplatform.applovin.ads
 
+import android.app.Activity
 import com.applovin.mediation.MaxAd
 import com.applovin.mediation.MaxAdListener
 import com.applovin.mediation.MaxError
@@ -12,7 +13,7 @@ actual class ApplovinInterstitialAd actual constructor(actual val adUnitId: Stri
     private var interstitialAds: MaxInterstitialAd? = null
     private var currentListener: AdListener? = null
 
-    internal fun initialize() {
+    actual fun initialize() {
         if (interstitialAds == null) {
             interstitialAds = MaxInterstitialAd(adUnitId)
         }
@@ -22,13 +23,31 @@ actual class ApplovinInterstitialAd actual constructor(actual val adUnitId: Stri
         get() = interstitialAds?.isReady ?: false
 
     actual fun loadAd() {
+        // Lazily initialize so callers do not need to call initialize() explicitly.
+        initialize()
         interstitialAds?.loadAd()
-            ?: throw IllegalStateException("Ad not initialized. SDK must be initialized first.")
     }
 
+    /**
+     * Shows the interstitial using the deprecated no-Activity API.
+     * Prefer [showAd(Activity)] which uses the non-deprecated API.
+     */
     actual fun showAd() {
         if (interstitialAds?.isReady == true) {
+            @Suppress("DEPRECATION")
             interstitialAds?.showAd()
+        }
+    }
+
+    /**
+     * Shows the interstitial using the recommended Activity-based API.
+     *
+     * AppLovin MAX requires an [Activity] reference to display the ad overlay correctly.
+     * Always prefer this overload over the no-arg [showAd] on Android.
+     */
+    fun showAd(activity: Activity) {
+        if (interstitialAds?.isReady == true) {
+            interstitialAds?.showAd(activity)
         }
     }
 

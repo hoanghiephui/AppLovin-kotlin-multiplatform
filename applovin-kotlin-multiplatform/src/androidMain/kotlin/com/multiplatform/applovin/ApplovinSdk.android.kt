@@ -21,12 +21,14 @@ actual class ApplovinSdk {
         sdkKey: String,
         userIdentifier: String,
         onInitialized: () -> Unit,
-        debugMode: Boolean
+        debugMode: Boolean,
+        testDeviceIds: List<String>
     ) {
         context ?: throw IllegalStateException("Context not set. Call setContext() first")
 
         val initConfig = AppLovinSdkInitializationConfiguration.builder(sdkKey)
             .setMediationProvider(AppLovinMediationProvider.MAX)
+            .setTestDeviceAdvertisingIds(testDeviceIds)
             .build()
 
         val applovinSdk = AppLovinSdk.getInstance(context)
