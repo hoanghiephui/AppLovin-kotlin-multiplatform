@@ -17,13 +17,15 @@ actual class ApplovinSdk {
         sdkKey: String,
         userIdentifier: String,
         onInitialized: () -> Unit,
-        debugMode: Boolean
+        debugMode: Boolean,
+        testDeviceIds: List<String>
     ) {
         // Create the initialization configuration with mediationProvider set to MAX
         val initConfig = ALSdkInitializationConfiguration
             .builderWithSdkKey(sdkKey)
             .apply {
                 mediationProvider = ALMediationProviderMAX
+                setTestDeviceAdvertisingIdentifiers(testDeviceIds)
             }
             .build()
 

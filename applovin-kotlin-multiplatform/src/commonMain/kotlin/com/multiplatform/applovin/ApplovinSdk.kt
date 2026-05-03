@@ -14,7 +14,8 @@ expect class ApplovinSdk {
         sdkKey: String,
         userIdentifier: String,
         onInitialized: () -> Unit,
-        debugMode: Boolean = false
+        debugMode: Boolean = false,
+        testDeviceIds: List<String> = emptyList(),
     )
 
     /**
