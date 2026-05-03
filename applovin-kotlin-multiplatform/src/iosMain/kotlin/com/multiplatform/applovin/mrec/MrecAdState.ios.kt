@@ -25,10 +25,12 @@ import platform.darwin.NSObject
  * @param nativeAdView the underlying [MAAdView]; `internal` so [MrecAdView] (same module)
  *   can pass it directly to [UIKitView] without an extra wrapper.
  * @param isAdReadyState mutable backing state for [isAdReady].
+ * @param isTablet `true` when the ad was created with [MAAdFormat.leader] (tablet layout).
  */
 actual class MrecAdState(
     internal val nativeAdView: MAAdView,
     private val isAdReadyState: MutableState<Boolean>,
+    actual val isTablet: Boolean = false,
 ) {
     actual val isAdReady: Boolean get() = isAdReadyState.value
 }
@@ -36,9 +38,13 @@ actual class MrecAdState(
 /**
  * iOS actual for [rememberMrecAd].
  *
- * Creates a [MAAdView] once with an explicit 300×250 frame so [ALViewabilityTimer]
- * does not log a "0 area" error. [loadAd] is called inside [DisposableEffect] to
- * pre-load the creative before the list item is visible.
+ * Creates a [MAAdView] once with an explicit frame so [ALViewabilityTimer] does not log
+ * a "0 area" error. [loadAd] is called inside [DisposableEffect] to pre-load the creative
+ * before the list item is visible.
+ *
+ * When [isTablet] is `true` the view is created with [MAAdFormat.leader] and a
+ * full-width × 90 pt frame (suited for tablets). Otherwise [MAAdFormat.mrec] with a
+ * 300 × 250 pt frame is used.
  *
  * Note: [loadAd] fires before the view is embedded in the window hierarchy, so
  * [ALViewabilityTimer] may emit a single informational warning during the pre-load phase.
@@ -48,6 +54,7 @@ actual class MrecAdState(
 @Composable
 actual fun rememberMrecAd(
     adUnitId: String,
+    isTablet: Boolean,
     onAdLoaded: () -> Unit,
     onAdLoadFailed: (error: String) -> Unit,
 ): MrecAdState {
@@ -55,12 +62,20 @@ actual fun rememberMrecAd(
 
     // Create the MAAdView once; it lives for the lifetime of the calling composable.
     val adView = remember(adUnitId) {
-        // Set an explicit MREC frame so ALViewabilityTimer sees a non-zero area even
-        // before the view is embedded in the Compose UIKit hierarchy.
         val screenWidth = UIScreen.mainScreen.bounds.useContents { size.width }
-        MAAdView(adUnitId, MAAdFormat.mrec()).apply {
-            setFrame(CGRectMake(0.0, 0.0, minOf(screenWidth, 300.0), 250.0))
-            backgroundColor = UIColor.clearColor
+        // Tablets use LEADER format (full-width × 90 pt); phones use MREC (300 × 250 pt).
+        // Setting an explicit frame ensures ALViewabilityTimer sees a non-zero area even
+        // before the view is embedded in the Compose UIKit hierarchy.
+        if (isTablet) {
+            MAAdView(adUnitId, MAAdFormat.leader()).apply {
+                setFrame(CGRectMake(0.0, 0.0, screenWidth, 90.0))
+                backgroundColor = UIColor.clearColor
+            }
+        } else {
+            MAAdView(adUnitId, MAAdFormat.mrec()).apply {
+                setFrame(CGRectMake(0.0, 0.0, minOf(screenWidth, 300.0), 250.0))
+                backgroundColor = UIColor.clearColor
+            }
         }
     }
 
@@ -90,7 +105,7 @@ actual fun rememberMrecAd(
         }
     }
 
-    return remember(adView, isAdReady) { MrecAdState(adView, isAdReady) }
+    return remember(adView, isAdReady) { MrecAdState(adView, isAdReady, isTablet) }
 }
 
 // ---------------------------------------------------------------------------

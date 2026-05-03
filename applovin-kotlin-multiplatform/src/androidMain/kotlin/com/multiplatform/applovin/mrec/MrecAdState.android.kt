@@ -17,10 +17,12 @@ import com.applovin.mediation.ads.MaxAdView
  * @param nativeAdView the underlying [MaxAdView]; `internal` so [MrecAdView] (same module)
  *   can pass it directly to [AndroidView] without an extra wrapper.
  * @param isAdReadyState mutable backing state for [isAdReady].
+ * @param isTablet `true` when the ad was created with [MaxAdFormat.LEADER] (tablet layout).
  */
 actual class MrecAdState(
     internal val nativeAdView: MaxAdView,
     private val isAdReadyState: MutableState<Boolean>,
+    actual val isTablet: Boolean = false,
 ) {
     actual val isAdReady: Boolean get() = isAdReadyState.value
 }
@@ -31,19 +33,26 @@ actual class MrecAdState(
  * Creates a [MaxAdView] once and loads the ad inside a [DisposableEffect] so that
  * [loadAd] fires only on the first composition, not on every recomposition.
  * [MaxAdView.destroy] is called when the calling composable leaves composition.
+ *
+ * When [isTablet] is `true` the ad is created with [MaxAdFormat.LEADER] (full-width × 90 dp)
+ * instead of the default [MaxAdFormat.MREC] (300 × 250 dp).
  */
 @Composable
 actual fun rememberMrecAd(
     adUnitId: String,
+    isTablet: Boolean,
     onAdLoaded: () -> Unit,
     onAdLoadFailed: (error: String) -> Unit,
 ): MrecAdState {
     val isAdReady = remember { mutableStateOf(false) }
 
+    // Select ad format based on device type: LEADER for tablets, MREC for phones.
+    val adFormat = if (isTablet) MaxAdFormat.LEADER else MaxAdFormat.MREC
+
     // Create the MaxAdView once; it lives for the lifetime of the calling composable
     // (typically the full screen), not the LazyList item lifecycle.
     val adView = remember(adUnitId) {
-        MaxAdView(adUnitId, MaxAdFormat.MREC).apply {
+        MaxAdView(adUnitId, adFormat).apply {
             setListener(object : MaxAdViewAdListener {
                 override fun onAdLoaded(ad: MaxAd) {
                     isAdReady.value = true
@@ -71,5 +80,5 @@ actual fun rememberMrecAd(
         onDispose { adView.destroy() }
     }
 
-    return remember(adView, isAdReady) { MrecAdState(adView, isAdReady) }
+    return remember(adView, isAdReady) { MrecAdState(adView, isAdReady, isTablet) }
 }

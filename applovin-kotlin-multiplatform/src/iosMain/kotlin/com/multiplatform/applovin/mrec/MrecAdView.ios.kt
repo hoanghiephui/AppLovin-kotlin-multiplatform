@@ -15,10 +15,12 @@ import kotlinx.cinterop.ExperimentalForeignApi
  * iOS actual for [MrecAdView].
  *
  * Passes the pre-created [MAAdView] from [adState] directly to [UIKitView].
- * Standard MREC dimensions (300×250 dp) are applied here so that Compose correctly
- * sizes the UIKit view container. Because [MrecAdView] is only shown when
- * [MrecAdState.isAdReady] is `true`, this space is never visible while the ad
- * is loading or when there is no fill.
+ * Dimensions are derived from [MrecAdState.isTablet]:
+ * - **Tablet** (LEADER format): full-width × 90 dp
+ * - **Phone** (MREC format): full-width × 250 dp (standard 300×250 MREC)
+ *
+ * Because [MrecAdView] is only shown when [MrecAdState.isAdReady] is `true`,
+ * this space is never visible while the ad is loading or when there is no fill.
  */
 @Composable
 actual fun MrecAdView(
@@ -29,6 +31,6 @@ actual fun MrecAdView(
         factory = { adState.nativeAdView },
         modifier = modifier
             .fillMaxWidth()
-            .height(250.dp),
+            .height(if (adState.isTablet) 90.dp else 250.dp),
     )
 }
