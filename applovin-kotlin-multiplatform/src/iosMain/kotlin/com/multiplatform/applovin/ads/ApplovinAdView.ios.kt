@@ -24,7 +24,11 @@ actual class ApplovinAdView actual constructor(
     private var nativeAdView: MAAdView? = null
     private var delegate: BannerAdDelegate? = null
 
-    internal fun initialize(): MAAdView {
+    actual fun initialize() {
+        ensureInitialized()
+    }
+
+    private fun ensureInitialized(): MAAdView {
         if (nativeAdView == null) {
             val iosAdFormat = when (adFormat) {
                 AdFormat.BANNER -> MAAdFormat.banner()

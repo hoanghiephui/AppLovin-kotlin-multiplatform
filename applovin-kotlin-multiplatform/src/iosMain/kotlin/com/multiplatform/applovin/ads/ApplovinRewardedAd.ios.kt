@@ -92,7 +92,7 @@ private class RewardedAdDelegate(
     }
 
     override fun didRewardUserForAd(ad: MAAd, withReward: MAReward) {
-        val rewardLabel = withReward.label ?: ""
+        val rewardLabel = withReward.label
         val rewardAmount = withReward.amount.toInt()
         onRewarded(rewardLabel, rewardAmount)
     }

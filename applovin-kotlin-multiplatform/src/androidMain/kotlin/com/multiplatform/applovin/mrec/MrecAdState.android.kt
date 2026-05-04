@@ -5,11 +5,15 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import com.applovin.mediation.MaxAd
 import com.applovin.mediation.MaxAdFormat
 import com.applovin.mediation.MaxAdViewAdListener
 import com.applovin.mediation.MaxError
 import com.applovin.mediation.ads.MaxAdView
+import com.multiplatform.applovin.utils.AdRetryState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Android implementation of [MrecAdState].
@@ -45,6 +49,9 @@ actual fun rememberMrecAd(
     onAdLoadFailed: (error: String) -> Unit,
 ): MrecAdState {
     val isAdReady = remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    // Non-observable retry holder — does not trigger recomposition on mutation.
+    val retryState = remember { AdRetryState() }
 
     // Select ad format based on device type: LEADER for tablets, MREC for phones.
     val adFormat = if (isTablet) MaxAdFormat.LEADER else MaxAdFormat.MREC
@@ -55,13 +62,23 @@ actual fun rememberMrecAd(
         MaxAdView(adUnitId, adFormat).apply {
             setListener(object : MaxAdViewAdListener {
                 override fun onAdLoaded(ad: MaxAd) {
+                    retryState.reset()
                     isAdReady.value = true
                     onAdLoaded()
                 }
 
                 override fun onAdLoadFailed(adUnitId: String, error: MaxError) {
-                    // isAdReady stays false — no empty layout slot will appear.
-                    onAdLoadFailed(error.message)
+                    if (retryState.canRetry) {
+                        // Exponential back-off: retry 1 → 2s, retry 2 → 4s, retry 3 → 8s.
+                        val delayMs = retryState.incrementAndGetDelayMs()
+                        retryState.setJob(scope.launch {
+                            delay(delayMs)
+                            loadAd()
+                        })
+                    } else {
+                        // All retries exhausted — surface the failure to the caller.
+                        onAdLoadFailed(error.message)
+                    }
                 }
 
                 override fun onAdClicked(ad: MaxAd) {}
@@ -74,10 +91,14 @@ actual fun rememberMrecAd(
         }
     }
 
-    // loadAd() once; destroy on disposal.
+    // loadAd() once; destroy on disposal. Cancel pending retries to prevent
+    // a post-disposal loadAd() call on the destroyed MaxAdView.
     DisposableEffect(adView) {
         adView.loadAd()
-        onDispose { adView.destroy() }
+        onDispose {
+            retryState.reset()
+            adView.destroy()
+        }
     }
 
     return remember(adView, isAdReady) { MrecAdState(adView, isAdReady, isTablet) }

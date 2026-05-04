@@ -7,6 +7,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import cocoapods.AppLovinSDK.MAAd
 import cocoapods.AppLovinSDK.MAAdFormat
 import cocoapods.AppLovinSDK.MAAdView
@@ -14,8 +15,11 @@ import cocoapods.AppLovinSDK.MAAdViewAdDelegateProtocol
 import cocoapods.AppLovinSDK.MAAdViewAdaptiveType
 import cocoapods.AppLovinSDK.MAAdViewConfiguration
 import cocoapods.AppLovinSDK.MAError
+import com.multiplatform.applovin.utils.AdRetryState
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import platform.CoreGraphics.CGRectMake
 import platform.UIKit.UIColor
 import platform.UIKit.UIScreen
@@ -58,6 +62,9 @@ actual fun rememberBannerAd(
 ): BannerAdState {
     val isAdReady = remember { mutableStateOf(false) }
     val adaptiveHeightDp = remember { mutableStateOf(50f) } // Default iPhone height
+    val scope = rememberCoroutineScope()
+    // Non-observable retry holder — does not trigger recomposition on mutation.
+    val retryState = remember { AdRetryState() }
 
     // Create the MAAdView once; it lives for the lifetime of the calling composable.
     val adView = remember(adUnitId) {
@@ -85,13 +92,23 @@ actual fun rememberBannerAd(
     val delegate = remember(adView) {
         BannerStateAdDelegate(
             onAdLoaded = { heightDp ->
+                retryState.reset()
                 adaptiveHeightDp.value = heightDp
                 isAdReady.value = true
                 onAdLoaded()
             },
             onAdLoadFailed = { error ->
-                // isAdReady stays false — no empty layout slot will appear.
-                onAdLoadFailed(error)
+                if (retryState.canRetry) {
+                    // Exponential back-off: retry 1 → 2s, retry 2 → 4s, retry 3 → 8s.
+                    val delayMs = retryState.incrementAndGetDelayMs()
+                    retryState.setJob(scope.launch {
+                        delay(delayMs)
+                        adView.loadAd()
+                    })
+                } else {
+                    // All retries exhausted — surface the failure to the caller.
+                    onAdLoadFailed(error)
+                }
             },
         )
     }
@@ -101,6 +118,7 @@ actual fun rememberBannerAd(
         adView.loadAd()
 
         onDispose {
+            retryState.reset()
             adView.setDelegate(null)
             adView.removeFromSuperview()
         }

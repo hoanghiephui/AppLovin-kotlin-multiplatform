@@ -146,7 +146,7 @@ private class BannerAdDelegate(
         adUnitIdentifier: String,
         withError: MAError
     ) {
-        onAdLoadFailed(withError.message ?: "Unknown error")
+        onAdLoadFailed(withError.message)
     }
 
     override fun didClickAd(ad: MAAd) {

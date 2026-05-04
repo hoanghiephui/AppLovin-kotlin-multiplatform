@@ -6,12 +6,16 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import com.applovin.mediation.MaxAd
 import com.applovin.mediation.MaxAdFormat
 import com.applovin.mediation.MaxAdViewAdListener
 import com.applovin.mediation.MaxAdViewConfiguration
 import com.applovin.mediation.MaxError
 import com.applovin.mediation.ads.MaxAdView
+import com.multiplatform.applovin.utils.AdRetryState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Android implementation of [BannerAdState].
@@ -46,6 +50,9 @@ actual fun rememberBannerAd(
 ): BannerAdState {
     val isAdReady = remember { mutableStateOf(false) }
     val adaptiveHeightDp = remember { mutableFloatStateOf(50f) } // Default phone height
+    val scope = rememberCoroutineScope()
+    // Non-observable retry holder — does not trigger recomposition on mutation.
+    val retryState = remember { AdRetryState() }
 
     // Create the MaxAdView once; it lives for the lifetime of the calling composable
     // (typically the full screen), not an inner list-item lifecycle.
@@ -60,13 +67,23 @@ actual fun rememberBannerAd(
                     // This automatically returns ~50dp on phones, ~90dp on tablets.
                     val adaptiveSize = MaxAdFormat.BANNER.getAdaptiveSize(context)
                     adaptiveHeightDp.floatValue = adaptiveSize.height.toFloat()
+                    retryState.reset()
                     isAdReady.value = true
                     onAdLoaded()
                 }
 
                 override fun onAdLoadFailed(adUnitId: String, error: MaxError) {
-                    // isAdReady stays false — no empty layout slot will appear.
-                    onAdLoadFailed(error.message)
+                    if (retryState.canRetry) {
+                        // Exponential back-off: retry 1 → 2s, retry 2 → 4s, retry 3 → 8s.
+                        val delayMs = retryState.incrementAndGetDelayMs()
+                        retryState.setJob(scope.launch {
+                            delay(delayMs)
+                            loadAd()
+                        })
+                    } else {
+                        // All retries exhausted — surface the failure to the caller.
+                        onAdLoadFailed(error.message)
+                    }
                 }
 
                 override fun onAdClicked(ad: MaxAd) {}
@@ -79,10 +96,14 @@ actual fun rememberBannerAd(
         }
     }
 
-    // loadAd() once; destroy on disposal.
+    // loadAd() once; destroy on disposal. Cancel pending retries to prevent
+    // a post-disposal loadAd() call on the destroyed MaxAdView.
     DisposableEffect(adView) {
         adView.loadAd()
-        onDispose { adView.destroy() }
+        onDispose {
+            retryState.reset()
+            adView.destroy()
+        }
     }
 
     return remember(adView, isAdReady, adaptiveHeightDp) {

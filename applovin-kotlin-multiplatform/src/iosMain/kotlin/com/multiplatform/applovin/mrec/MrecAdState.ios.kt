@@ -7,13 +7,17 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import cocoapods.AppLovinSDK.MAAd
 import cocoapods.AppLovinSDK.MAAdFormat
 import cocoapods.AppLovinSDK.MAAdView
 import cocoapods.AppLovinSDK.MAAdViewAdDelegateProtocol
 import cocoapods.AppLovinSDK.MAError
+import com.multiplatform.applovin.utils.AdRetryState
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import platform.CoreGraphics.CGRectMake
 import platform.UIKit.UIColor
 import platform.UIKit.UIScreen
@@ -39,7 +43,7 @@ actual class MrecAdState(
  * iOS actual for [rememberMrecAd].
  *
  * Creates a [MAAdView] once with an explicit frame so [ALViewabilityTimer] does not log
- * a "0 area" error. [loadAd] is called inside [DisposableEffect] to pre-load the creative
+ * a "0 area" error. [loadAd] is called inside [DisposableEffect] to preload the creative
  * before the list item is visible.
  *
  * When [isTablet] is `true` the view is created with [MAAdFormat.leader] and a
@@ -47,7 +51,7 @@ actual class MrecAdState(
  * 300 × 250 pt frame is used.
  *
  * Note: [loadAd] fires before the view is embedded in the window hierarchy, so
- * [ALViewabilityTimer] may emit a single informational warning during the pre-load phase.
+ * [ALViewabilityTimer] may emit a single informational warning during the preload phase.
  * This is non-fatal; the ad loads correctly and [isAdReady] transitions to `true`
  * once [didLoadAd] is called.
  */
@@ -59,6 +63,9 @@ actual fun rememberMrecAd(
     onAdLoadFailed: (error: String) -> Unit,
 ): MrecAdState {
     val isAdReady = remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    // Non-observable retry holder — does not trigger recomposition on mutation.
+    val retryState = remember { AdRetryState() }
 
     // Create the MAAdView once; it lives for the lifetime of the calling composable.
     val adView = remember(adUnitId) {
@@ -85,12 +92,22 @@ actual fun rememberMrecAd(
     val delegate = remember(adView) {
         MrecAdDelegate(
             onAdLoaded = {
+                retryState.reset()
                 isAdReady.value = true
                 onAdLoaded()
             },
             onAdLoadFailed = { error ->
-                // isAdReady stays false — no empty layout slot will appear.
-                onAdLoadFailed(error)
+                if (retryState.canRetry) {
+                    // Exponential back-off: retry 1 → 2s, retry 2 → 4s, retry 3 → 8s.
+                    val delayMs = retryState.incrementAndGetDelayMs()
+                    retryState.setJob(scope.launch {
+                        delay(delayMs)
+                        adView.loadAd()
+                    })
+                } else {
+                    // All retries exhausted — surface the failure to the caller.
+                    onAdLoadFailed(error)
+                }
             },
         )
     }
@@ -100,6 +117,7 @@ actual fun rememberMrecAd(
         adView.loadAd()
 
         onDispose {
+            retryState.reset()
             adView.setDelegate(null)
             adView.removeFromSuperview()
         }

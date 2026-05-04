@@ -21,7 +21,7 @@ actual class ApplovinAdView actual constructor(
         AdFormat.LEADER -> MaxAdFormat.LEADER
     }
 
-    internal fun initialize() {
+    actual fun initialize() {
         if (adView == null) {
             adView = MaxAdView(adUnitId, applovinAdFormat)
         }
