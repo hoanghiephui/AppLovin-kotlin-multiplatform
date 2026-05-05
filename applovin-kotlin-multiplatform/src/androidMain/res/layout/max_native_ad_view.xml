@@ -15,6 +15,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    xmlns:tools="http://schemas.android.com/tools"
     android:maxHeight="310dp">
 
     <!-- Privacy / AdChoices options icon — REQUIRED by AppLovin MAX. -->
@@ -53,7 +54,7 @@
     <!-- Ad title — primary headline text. -->
     <TextView
         android:id="@+id/title_text_view"
-        style="?android:attr/textAppearanceMedium"
+        android:textSize="15sp"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
@@ -67,7 +68,7 @@
     <!-- Advertiser name (brand name). -->
     <TextView
         android:id="@+id/advertiser_text_view"
-        style="?android:attr/textAppearanceSmall"
+        android:textSize="12sp"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
@@ -81,7 +82,7 @@
     <!-- Body / description text. -->
     <TextView
         android:id="@+id/body_text_view"
-        style="?android:attr/textAppearanceSmall"
+        android:textSize="12sp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="12dp"
@@ -97,7 +98,7 @@
     <FrameLayout
         android:id="@+id/media_view_container"
         android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:minHeight="150dp"
         app:layout_constraintDimensionRatio="W,16:9"
@@ -117,11 +118,12 @@
         app:layout_constraintTop_toBottomOf="@id/text_view" />
 
     <!-- Call-to-action button. -->
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/cta_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="12dp"
+        tools:text="Install"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/media_view_container" />

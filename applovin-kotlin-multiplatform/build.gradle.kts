@@ -59,6 +59,7 @@ kotlin {
             api(libs.applovin.sdk)
             api(libs.services.ads.identifier)
             api("androidx.constraintlayout:constraintlayout:2.2.1")
+            api("com.google.android.material:material:1.14.0-rc01")
             //api(libs.applovin.mediation.google)
         }
     }
