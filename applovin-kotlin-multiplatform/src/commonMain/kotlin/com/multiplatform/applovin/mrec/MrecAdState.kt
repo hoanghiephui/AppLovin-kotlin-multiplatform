@@ -44,6 +44,7 @@ expect class MrecAdState {
 expect fun rememberMrecAd(
     adUnitId: String,
     isTablet: Boolean = false,
+    adPlacement: String,
     onAdLoaded: () -> Unit = {},
     onAdLoadFailed: (error: String) -> Unit = {},
 ): MrecAdState

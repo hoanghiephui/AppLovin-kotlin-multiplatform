@@ -59,6 +59,7 @@ actual class MrecAdState(
 actual fun rememberMrecAd(
     adUnitId: String,
     isTablet: Boolean,
+    adPlacement: String,
     onAdLoaded: () -> Unit,
     onAdLoadFailed: (error: String) -> Unit,
 ): MrecAdState {
@@ -68,7 +69,7 @@ actual fun rememberMrecAd(
     val retryState = remember { AdRetryState() }
 
     // Create the MAAdView once; it lives for the lifetime of the calling composable.
-    val adView = remember(adUnitId) {
+    val adView = remember(adUnitId, adPlacement) {
         val screenWidth = UIScreen.mainScreen.bounds.useContents { size.width }
         // Tablets use LEADER format (full-width × 90 pt); phones use MREC (300 × 250 pt).
         // Setting an explicit frame ensures ALViewabilityTimer sees a non-zero area even
@@ -89,7 +90,7 @@ actual fun rememberMrecAd(
     // Compose holds a strong reference to the delegate for the composable's lifetime,
     // preventing Kotlin/Native GC from collecting it before callbacks fire.
     // MAAdView.delegate is an ObjC `weak` property and does NOT retain the object.
-    val delegate = remember(adView) {
+    val delegate = remember(adView, adPlacement) {
         MrecAdDelegate(
             onAdLoaded = {
                 retryState.reset()
@@ -112,8 +113,9 @@ actual fun rememberMrecAd(
         )
     }
 
-    DisposableEffect(adView) {
+    DisposableEffect(adView, adPlacement) {
         adView.setDelegate(delegate)
+        adView.setPlacement(adPlacement)
         adView.loadAd()
 
         onDispose {
@@ -123,7 +125,7 @@ actual fun rememberMrecAd(
         }
     }
 
-    return remember(adView, isAdReady) { MrecAdState(adView, isAdReady, isTablet) }
+    return remember(adView, isAdReady, adPlacement) { MrecAdState(adView, isAdReady, isTablet) }
 }
 
 // ---------------------------------------------------------------------------

@@ -45,6 +45,7 @@ actual class MrecAdState(
 actual fun rememberMrecAd(
     adUnitId: String,
     isTablet: Boolean,
+    adPlacement: String,
     onAdLoaded: () -> Unit,
     onAdLoadFailed: (error: String) -> Unit,
 ): MrecAdState {
@@ -58,7 +59,7 @@ actual fun rememberMrecAd(
 
     // Create the MaxAdView once; it lives for the lifetime of the calling composable
     // (typically the full screen), not the LazyList item lifecycle.
-    val adView = remember(adUnitId) {
+    val adView = remember(adUnitId, adPlacement) {
         MaxAdView(adUnitId, adFormat).apply {
             setListener(object : MaxAdViewAdListener {
                 override fun onAdLoaded(ad: MaxAd) {
@@ -93,7 +94,8 @@ actual fun rememberMrecAd(
 
     // loadAd() once; destroy on disposal. Cancel pending retries to prevent
     // a post-disposal loadAd() call on the destroyed MaxAdView.
-    DisposableEffect(adView) {
+    DisposableEffect(adView, adPlacement) {
+        adView.placement = adPlacement
         adView.loadAd()
         onDispose {
             retryState.reset()
@@ -101,5 +103,5 @@ actual fun rememberMrecAd(
         }
     }
 
-    return remember(adView, isAdReady) { MrecAdState(adView, isAdReady, isTablet) }
+    return remember(adView, isAdReady, adPlacement) { MrecAdState(adView, isAdReady, isTablet) }
 }
