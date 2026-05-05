@@ -58,6 +58,7 @@ kotlin {
             implementation(libs.lifecycle.process)
             api(libs.applovin.sdk)
             api(libs.services.ads.identifier)
+            api("androidx.constraintlayout:constraintlayout:2.2.1")
             //api(libs.applovin.mediation.google)
         }
     }

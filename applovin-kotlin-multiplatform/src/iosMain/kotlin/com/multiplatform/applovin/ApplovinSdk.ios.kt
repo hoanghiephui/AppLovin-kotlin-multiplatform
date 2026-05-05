@@ -10,6 +10,7 @@ import com.multiplatform.applovin.ads.ApplovinInterstitialAd
 import com.multiplatform.applovin.ads.ApplovinRewardedAd
 import com.multiplatform.applovin.banner.AdFormat
 import kotlinx.cinterop.ExperimentalForeignApi
+import platform.Foundation.NSURL
 
 actual class ApplovinSdk {
 
@@ -18,7 +19,8 @@ actual class ApplovinSdk {
         userIdentifier: String,
         onInitialized: () -> Unit,
         debugMode: Boolean,
-        testDeviceIds: List<String>
+        testDeviceIds: List<String>,
+        urlTerm: String
     ) {
         // Create the initialization configuration with mediationProvider set to MAX
         val initConfig = ALSdkInitializationConfiguration
@@ -31,9 +33,14 @@ actual class ApplovinSdk {
 
         // Configure the SDK settings before SDK initialization
         val settings = ALSdk.shared().settings
-        settings.userIdentifier = userIdentifier
+        //settings.userIdentifier = userIdentifier
         settings.verboseLoggingEnabled = debugMode
         settings.setCreativeDebuggerEnabled(debugMode)
+        settings.termsAndPrivacyPolicyFlowSettings.apply {
+            enabled = true
+            privacyPolicyURL = NSURL.URLWithString(urlTerm)
+            termsOfServiceURL = NSURL.URLWithString(urlTerm)
+        }
 
         // Initialize the SDK with the configuration
         ALSdk.shared().initializeWithConfiguration(

@@ -1,6 +1,7 @@
 package com.multiplatform.applovin
 
 import android.content.Context
+import android.net.Uri
 import com.applovin.sdk.AppLovinMediationProvider
 import com.applovin.sdk.AppLovinSdk
 import com.applovin.sdk.AppLovinSdkInitializationConfiguration
@@ -22,7 +23,8 @@ actual class ApplovinSdk {
         userIdentifier: String,
         onInitialized: () -> Unit,
         debugMode: Boolean,
-        testDeviceIds: List<String>
+        testDeviceIds: List<String>,
+        urlTerm: String
     ) {
         context ?: throw IllegalStateException("Context not set. Call setContext() first")
 
@@ -32,12 +34,20 @@ actual class ApplovinSdk {
             .build()
 
         val applovinSdk = AppLovinSdk.getInstance(context)
-        applovinSdk.settings.userIdentifier = userIdentifier
+        applovinSdk.apply {
+            //settings.userIdentifier = userIdentifier
+            settings.setVerboseLogging(debugMode)
+            settings.isCreativeDebuggerEnabled = debugMode
+            settings.termsAndPrivacyPolicyFlowSettings.apply {
+                isEnabled = true
+                privacyPolicyUri = Uri.parse(urlTerm)
+                termsOfServiceUri = Uri.parse(urlTerm)
+            }
+        }
         applovinSdk.initialize(initConfig) {
             onInitialized()
         }
-        applovinSdk.settings.setVerboseLogging(debugMode)
-        applovinSdk.settings.isCreativeDebuggerEnabled = debugMode
+
     }
 
     actual fun createBanner(adUnitId: String): ApplovinAdView {

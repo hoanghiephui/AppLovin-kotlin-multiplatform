@@ -16,6 +16,7 @@ expect class ApplovinSdk {
         onInitialized: () -> Unit,
         debugMode: Boolean = false,
         testDeviceIds: List<String> = emptyList(),
+        urlTerm: String
     )
 
     /**
