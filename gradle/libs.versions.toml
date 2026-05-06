@@ -13,6 +13,7 @@ applovin-sdk = "13.6.2"
 cocopods = "2.3.21"
 services-ads-identifier = "18.3.0"
 mediation-google = "25.2.0.0"
+google-ump = "4.0.0"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
@@ -20,6 +21,7 @@ lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.r
 applovin-sdk = { group = "com.applovin", name = "applovin-sdk", version.ref = "applovin-sdk" }
 services-ads-identifier = { module = "com.google.android.gms:play-services-ads-identifier", version.ref = "services-ads-identifier" }
 applovin-mediation-google = { module = "com.applovin.mediation:google-adapter", version.ref = "mediation-google" }
+google-user-messaging-platform = { module = "com.google.android.ump:user-messaging-platform", version.ref = "google-ump" }
 
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }

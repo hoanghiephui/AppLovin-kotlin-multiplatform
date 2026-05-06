@@ -20,7 +20,9 @@ actual class ApplovinSdk {
         onInitialized: () -> Unit,
         debugMode: Boolean,
         testDeviceIds: List<String>,
-        urlTerm: String
+        privacyPolicyUrl: String,
+        termsOfServiceUrl: String,
+        showTermsAndPrivacyAlertInGdpr: Boolean
     ) {
         // Create the initialization configuration with mediationProvider set to MAX
         val initConfig = ALSdkInitializationConfiguration
@@ -38,8 +40,9 @@ actual class ApplovinSdk {
         settings.setCreativeDebuggerEnabled(debugMode)
         settings.termsAndPrivacyPolicyFlowSettings.apply {
             enabled = true
-            privacyPolicyURL = NSURL.URLWithString(urlTerm)
-            termsOfServiceURL = NSURL.URLWithString(urlTerm)
+            privacyPolicyURL = NSURL.URLWithString(privacyPolicyUrl)
+            termsOfServiceURL = NSURL.URLWithString(termsOfServiceUrl)
+            showTermsAndPrivacyPolicyAlertInGDPR = showTermsAndPrivacyAlertInGdpr
         }
 
         // Initialize the SDK with the configuration
