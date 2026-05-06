@@ -3,7 +3,7 @@ package com.multiplatform.applovin.native
 import androidx.compose.runtime.Composable
 
 /**
- * Holds the pre-loaded state for a MAX Native ad.
+ * Holds the preloaded state for a MAX Native ad.
  *
  * Create an instance via [rememberNativeAd] at the *screen* level (outside any
  * [LazyColumn]/[LazyVerticalGrid] or conditional branch) so the native view survives
@@ -15,7 +15,17 @@ import androidx.compose.runtime.Composable
  *   while the ad is pending or when there is no fill.
  */
 expect class NativeAdState {
+    /** `true` once the native ad creative has loaded and is ready to display. */
     val isAdReady: Boolean
+
+    /**
+     * `true` when all retry attempts have been exhausted and no ad is available.
+     *
+     * Callers that chain slot loading (e.g. [rememberNativeAdPlacer]) observe this
+     * flag to advance to the next slot even when the current one permanently fails,
+     * preventing the sequential load chain from stalling.
+     */
+    val hasFailed: Boolean
 
     /**
      * Manually triggers a fresh ad load, resetting the retry counter.
@@ -25,6 +35,16 @@ expect class NativeAdState {
      * is already in progress it will be superseded by the new request.
      */
     fun refresh()
+
+    /**
+     * Triggers the initial ad load for slots created with `autoLoad = false`.
+     *
+     * This is a no-op if the load has already been started (either because
+     * `autoLoad = true` or because [startLoad] was already called once).
+     * Used by [rememberNativeAdPlacer] to implement the same sequential
+     * one-at-a-time loading strategy as [MaxAdPlacer]'s internal preloader.
+     */
+    fun startLoad()
 }
 
 /**
@@ -56,6 +76,13 @@ expect class NativeAdState {
 expect fun rememberNativeAd(
     adUnitId: String,
     adPlacement: String,
+    /**
+     * When `true` (the default) the ad load starts immediately inside [DisposableEffect].
+     * Pass `false` to defer loading until [NativeAdState.startLoad] is called — used by
+     * [rememberNativeAdPlacer] to implement sequential one-at-a-time loading that mirrors
+     * the strategy used internally by AppLovin's [MaxAdPlacer].
+     */
+    autoLoad: Boolean = true,
     onAdLoaded: () -> Unit = {},
     onAdLoadFailed: (error: String) -> Unit = {},
     onAdClicked: () -> Unit = {},

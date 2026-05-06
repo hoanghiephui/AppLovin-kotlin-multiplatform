@@ -167,18 +167,31 @@ private fun buildMANativeAdView(): MANativeAdView = MANativeAdView().apply {
  *   [NativeAdView] (same module) can pass it directly to [UIKitView] without exposing
  *   platform types through the common API.
  * @param isAdReadyState mutable backing state for [isAdReady].
+ * @param hasFailedState mutable backing state for [hasFailed]; set when all retries fail.
  * @param onRefresh lambda captured from [rememberNativeAd]'s composition scope; encapsulates
  *   all platform-specific reload logic (retry reset + [MANativeAdLoader.loadAdIntoAdView]).
+ * @param onStartLoad lambda that fires the initial load; guarded internally against double-calls.
  */
 actual class NativeAdState(
     internal val nativeAdView: MANativeAdView,
     private val isAdReadyState: MutableState<Boolean>,
+    private val hasFailedState: MutableState<Boolean>,
     private val onRefresh: () -> Unit,
+    private val onStartLoad: () -> Unit,
 ) {
     actual val isAdReady: Boolean get() = isAdReadyState.value
 
+    /** `true` when all retry attempts are exhausted and no ad could be loaded. */
+    actual val hasFailed: Boolean get() = hasFailedState.value
+
     /** Cancels any pending retry and fires a fresh ad load request. */
     actual fun refresh() = onRefresh()
+
+    /**
+     * Triggers the initial load for slots created with `autoLoad = false`.
+     * No-op if loading has already started.
+     */
+    actual fun startLoad() = onStartLoad()
 }
 
 /**
@@ -203,6 +216,7 @@ actual class NativeAdState(
 actual fun rememberNativeAd(
     adUnitId: String,
     adPlacement: String,
+    autoLoad: Boolean,
     onAdLoaded: () -> Unit,
     onAdLoadFailed: (error: String) -> Unit,
     onAdClicked: () -> Unit,
@@ -210,6 +224,9 @@ actual fun rememberNativeAd(
     onAdRetrying: (attempt: Int, delayMs: Long) -> Unit,
 ): NativeAdState {
     val isAdReady = remember { mutableStateOf(false) }
+    // Observable flag set when all retry attempts are exhausted so the sequential
+    // load chain in rememberNativeAdPlacer can advance to the next slot.
+    val hasFailed = remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     // Non-observable retry holder — mutations do NOT trigger recomposition.
     val retryState = remember { AdRetryState() }
@@ -276,6 +293,7 @@ actual fun rememberNativeAd(
                     })
                 } else {
                     // All retries exhausted — surface the failure to the caller.
+                    hasFailed.value = true
                     onAdLoadFailed(error)
                 }
             },
@@ -283,10 +301,13 @@ actual fun rememberNativeAd(
         )
     }
 
-    // Attach delegate and fire initial load. Destroy ad + loader on disposal.
-    DisposableEffect(loader, adPlacement) {
+    // Attach delegate and fire initial load only when autoLoad is requested.
+    // When autoLoad = false the caller (e.g. rememberNativeAdPlacer) is responsible
+    // for invoking startLoad() to implement sequential loading.
+    val hasLoadStarted = remember { mutableStateOf(autoLoad) }
+    DisposableEffect(adUnitId, adPlacement) {
         loader.setNativeAdDelegate(delegate)
-        loader.loadAdIntoAdView(nativeAdView)
+        if (autoLoad) loader.loadAdIntoAdView(nativeAdView)
         onDispose {
             retryState.reset()
             loadedAdHolder.ad?.let { loader.destroyAd(it) }
@@ -294,14 +315,26 @@ actual fun rememberNativeAd(
         }
     }
 
-    return remember(nativeAdView, isAdReady) {
+    // Key on adUnitId + adPlacement so onRefresh always captures the current loader
+    // (loader is recreated when adPlacement changes but nativeAdView is not).
+    return remember(adUnitId, adPlacement) {
         NativeAdState(
             nativeAdView = nativeAdView,
             isAdReadyState = isAdReady,
+            hasFailedState = hasFailed,
             onRefresh = {
                 retryState.reset()
                 isAdReady.value = false
+                hasFailed.value = false
+                hasLoadStarted.value = true
                 loader.loadAdIntoAdView(nativeAdView)
+            },
+            onStartLoad = {
+                // Guard: only start once; subsequent calls are no-ops.
+                if (!hasLoadStarted.value) {
+                    hasLoadStarted.value = true
+                    loader.loadAdIntoAdView(nativeAdView)
+                }
             },
         )
     }

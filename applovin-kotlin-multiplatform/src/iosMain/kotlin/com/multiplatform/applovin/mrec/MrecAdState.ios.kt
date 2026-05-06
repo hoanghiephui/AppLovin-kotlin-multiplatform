@@ -113,19 +113,19 @@ actual fun rememberMrecAd(
         )
     }
 
-    DisposableEffect(adView, adPlacement) {
+    DisposableEffect(adUnitId, adPlacement) {
         adView.setDelegate(delegate)
         adView.setPlacement(adPlacement)
         adView.loadAd()
 
         onDispose {
             retryState.reset()
-            adView.setDelegate(null)
+            adView.setDelegate(null)  // nullify delegate — any in-flight auto-refresh callbacks become no-ops
             adView.removeFromSuperview()
         }
     }
 
-    return remember(adView, isAdReady, adPlacement) { MrecAdState(adView, isAdReady, isTablet) }
+    return remember(adUnitId, adPlacement) { MrecAdState(adView, isAdReady, isTablet) }
 }
 
 // ---------------------------------------------------------------------------

@@ -51,12 +51,23 @@ private fun Resources.libId(name: String, pkg: String): Int =
 actual class NativeAdState(
     internal val nativeAdView: MaxNativeAdView,
     private val isAdReadyState: MutableState<Boolean>,
+    private val hasFailedState: MutableState<Boolean>,
     private val onRefresh: () -> Unit,
+    private val onStartLoad: () -> Unit,
 ) {
     actual val isAdReady: Boolean get() = isAdReadyState.value
 
+    /** `true` when all retry attempts are exhausted and no ad could be loaded. */
+    actual val hasFailed: Boolean get() = hasFailedState.value
+
     /** Cancels any pending retry and fires a fresh ad load request. */
     actual fun refresh() = onRefresh()
+
+    /**
+     * Triggers the initial load for slots created with `autoLoad = false`.
+     * No-op if loading has already started (guarded by [onStartLoad]'s internal flag).
+     */
+    actual fun startLoad() = onStartLoad()
 }
 
 /**
@@ -92,6 +103,7 @@ actual class NativeAdState(
 actual fun rememberNativeAd(
     adUnitId: String,
     adPlacement: String,
+    autoLoad: Boolean,
     onAdLoaded: () -> Unit,
     onAdLoadFailed: (error: String) -> Unit,
     onAdClicked: () -> Unit,
@@ -100,6 +112,9 @@ actual fun rememberNativeAd(
 ): NativeAdState {
     val context = LocalContext.current
     val isAdReady = remember { mutableStateOf(false) }
+    // Observable flag set when all retry attempts are exhausted so the sequential
+    // load chain in rememberNativeAdPlacer can advance to the next slot.
+    val hasFailed = remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     // Non-observable retry holder — mutations do NOT trigger recomposition.
     val retryState = remember { AdRetryState() }
@@ -156,6 +171,7 @@ actual fun rememberNativeAd(
                         })
                     } else {
                         // All retries exhausted — surface the failure to the caller.
+                        hasFailed.value = true
                         onAdLoadFailed(error.message)
                     }
                 }
@@ -172,9 +188,14 @@ actual fun rememberNativeAd(
         }
     }
 
-    // Fire the first load. onDispose cancels pending retries and destroys all resources.
-    DisposableEffect(nativeAdLoader, adPlacement) {
-        nativeAdLoader.loadAd(nativeAdView)
+    // Fire the first load only when autoLoad is requested. When autoLoad = false the
+    // caller (e.g. rememberNativeAdPlacer) is responsible for invoking startLoad() at
+    // the right time to implement sequential loading that mirrors MaxAdPlacer's strategy.
+    // A hasLoadStarted flag prevents startLoad() from firing a second time if the caller
+    // accidentally invokes it on an already-loading slot.
+    val hasLoadStarted = remember { mutableStateOf(autoLoad) }
+    DisposableEffect(adUnitId, adPlacement) {
+        if (autoLoad) nativeAdLoader.loadAd(nativeAdView)
         onDispose {
             retryState.reset()
             loadedAdHolder.ad?.let { nativeAdLoader.destroy(it) }
@@ -182,14 +203,24 @@ actual fun rememberNativeAd(
         }
     }
 
-    return remember(nativeAdView, isAdReady, adPlacement) {
+    return remember(adUnitId, adPlacement) {
         NativeAdState(
             nativeAdView = nativeAdView,
             isAdReadyState = isAdReady,
+            hasFailedState = hasFailed,
             onRefresh = {
                 retryState.reset()
                 isAdReady.value = false
+                hasFailed.value = false
+                hasLoadStarted.value = true
                 nativeAdLoader.loadAd(nativeAdView)
+            },
+            onStartLoad = {
+                // Guard: only start once; subsequent calls are no-ops.
+                if (!hasLoadStarted.value) {
+                    hasLoadStarted.value = true
+                    nativeAdLoader.loadAd(nativeAdView)
+                }
             },
         )
     }

@@ -94,7 +94,7 @@ actual fun rememberMrecAd(
 
     // loadAd() once; destroy on disposal. Cancel pending retries to prevent
     // a post-disposal loadAd() call on the destroyed MaxAdView.
-    DisposableEffect(adView, adPlacement) {
+    DisposableEffect(adUnitId, adPlacement) {
         adView.placement = adPlacement
         adView.loadAd()
         onDispose {
@@ -103,5 +103,5 @@ actual fun rememberMrecAd(
         }
     }
 
-    return remember(adView, isAdReady, adPlacement) { MrecAdState(adView, isAdReady, isTablet) }
+    return remember(adUnitId, adPlacement) { MrecAdState(adView, isAdReady, isTablet) }
 }
