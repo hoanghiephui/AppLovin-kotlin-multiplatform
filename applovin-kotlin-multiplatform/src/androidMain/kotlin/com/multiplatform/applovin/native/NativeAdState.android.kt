@@ -57,7 +57,7 @@ private fun applyNativeAdColors(adView: MaxNativeAdView, themedContext: ContextT
     val isDark = (themedContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
         Configuration.UI_MODE_NIGHT_YES
 
-    val titleColor = if (isDark) "#FFFFFF".toColorInt() else "#0E0E10".toColorInt()
+    val titleColor = if (isDark) Color.WHITE else Color.BLACK
     val bodyColor  = if (isDark) "#ADADB8".toColorInt() else "#53535F".toColorInt()
     val ctaBg      = ColorStateList.valueOf("#9146FF".toColorInt()) // Twitch purple
     val ctaText    = Color.WHITE
