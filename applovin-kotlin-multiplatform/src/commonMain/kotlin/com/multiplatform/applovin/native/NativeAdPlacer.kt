@@ -365,12 +365,12 @@ fun rememberNativeAdPlacer(
     // All POOL_SIZE composable calls MUST appear unconditionally and in fixed order to
     // satisfy Compose's call-order invariant.
     //
-    // Sequential loading strategy — mirrors MaxAdPlacer's internal z2 preloader:
+    // Sequential loading strategy — mirrors MaxAdPlacer's internal z2 preloaded:
     //   slot 0 starts immediately (autoLoad = true).
     //   slots 1-3 start only after the previous slot settles (loaded OR permanently failed).
     //
     // This avoids firing N simultaneous requests to AppLovin servers, matching the SDK's
-    // one-at-a-time queue behaviour. The LaunchedEffect below observes each slot's
+    // one-at-a-time queue behavior. The LaunchedEffect below observes each slot's
     // isAdReady / hasFailed state and calls startLoad() on the next slot in sequence.
     val slot0 = rememberNativeAd(
         adUnitId = adUnitId,
@@ -403,7 +403,7 @@ fun rememberNativeAdPlacer(
 
     // Sequential load chain: each slot starts only after the previous one settles.
     // "Settled" = isAdReady (success) OR hasFailed (all retries exhausted).
-    // This matches MaxAdPlacer's z2 preloader which uses a single MaxNativeAdLoader
+    // This matches MaxAdPlacer's z2 preloaded which uses a single MaxNativeAdLoader
     // and enqueues the next loadAd() call inside onNativeAdLoaded.
     LaunchedEffect(adUnitId, adPlacement) {
         if (effectiveMax > 1) {
