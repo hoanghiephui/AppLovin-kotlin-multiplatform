@@ -1,9 +1,11 @@
 package com.multiplatform.applovin.native
 
 import android.content.res.ColorStateList
+import android.content.res.Configuration
 import android.content.res.Resources
 import android.graphics.Color
 import android.view.ContextThemeWrapper
+import android.widget.TextView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
@@ -22,6 +24,7 @@ import com.google.android.material.button.MaterialButton
 import com.multiplatform.applovin.utils.AdRetryState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.core.graphics.toColorInt
 
 /**
  * Resolves a layout resource ID using the application's package name.
@@ -33,27 +36,42 @@ import kotlinx.coroutines.launch
  * in [Resources.getIdentifier].
  */
 /**
- * Applies the Twitch brand purple tint to the CTA [MaterialButton].
+ * Applies theme-aware colors to all text views and the CTA [MaterialButton] inside [adView].
  *
- * Text colors for TextViews are handled automatically by the Material3 DayNight theme
- * applied via [ContextThemeWrapper] at [MaxNativeAdView] creation time — no programmatic
- * color setting is needed for them.
+ * ### Why programmatic, not XML attrs?
+ * AppLovin inflates [MaxNativeAdView] with a [ContextThemeWrapper] that carries
+ * [com.google.android.material.R.style.Theme_Material3_DayNight]. While this makes
+ * [MaterialButton] inflate correctly, the ad background colour is set by the
+ * advertiser's creative (typically white/light), so `?attr/colorOnSurface` may still
+ * produce text that is nearly invisible against that background.
+ * Hard-coded high-contrast values are the only reliable guarantee.
  *
- * [MaterialButton] responds correctly to [ViewCompat.setBackgroundTintList], which operates
- * on the tint layer rather than mutating the drawable directly. This is the only reliable
- * way to override a [MaterialButton]'s background color at runtime.
+ * Night-mode detection uses [Configuration.UI_MODE_NIGHT_MASK] from [themedContext]
+ * rather than from Compose so it works inside a `remember` block (non-composable context).
  *
- * @param adView the [MaxNativeAdView] after inflation; the CTA button is located via resource ID.
+ * @param adView  inflated [MaxNativeAdView] to style.
+ * @param themedContext the [ContextThemeWrapper] used to create [adView]; its configuration
+ *   carries the correct night/day flag.
  */
-private fun applyCtaButtonTint(adView: MaxNativeAdView) {
+private fun applyNativeAdColors(adView: MaxNativeAdView, themedContext: ContextThemeWrapper) {
+    val isDark = (themedContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+        Configuration.UI_MODE_NIGHT_YES
+
+    val titleColor = if (isDark) "#FFFFFF".toColorInt() else "#0E0E10".toColorInt()
+    val bodyColor  = if (isDark) "#ADADB8".toColorInt() else "#53535F".toColorInt()
+    val ctaBg      = ColorStateList.valueOf("#9146FF".toColorInt()) // Twitch purple
+    val ctaText    = Color.WHITE
+
     val res = adView.resources
     val pkg = adView.context.packageName
-    val ctaId = res.getIdentifier("cta_button", "id", pkg)
-    adView.findViewById<MaterialButton>(ctaId)?.let { btn ->
-        // Twitch purple — sufficient contrast against both light and dark backgrounds.
-        val twitchPurple = ColorStateList.valueOf(Color.parseColor("#9146FF"))
-        ViewCompat.setBackgroundTintList(btn, twitchPurple)
-        btn.setTextColor(Color.WHITE)
+    fun id(name: String) = res.getIdentifier(name, "id", pkg)
+
+    adView.findViewById<TextView>(id("title_text_view"))?.setTextColor(titleColor)
+    adView.findViewById<TextView>(id("advertiser_text_view"))?.setTextColor(bodyColor)
+    adView.findViewById<TextView>(id("body_text_view"))?.setTextColor(bodyColor)
+    adView.findViewById<MaterialButton>(id("cta_button"))?.let { btn ->
+        ViewCompat.setBackgroundTintList(btn, ctaBg)
+        btn.setTextColor(ctaText)
     }
 }
 
@@ -182,7 +200,7 @@ actual fun rememberNativeAd(
             context,
             com.google.android.material.R.style.Theme_Material3_DayNight,
         )
-        MaxNativeAdView(binder, themedContext).also { applyCtaButtonTint(it) }
+        MaxNativeAdView(binder, themedContext).also { applyNativeAdColors(it, themedContext) }
     }
 
     val nativeAdLoader = remember(adUnitId, adPlacement) {
