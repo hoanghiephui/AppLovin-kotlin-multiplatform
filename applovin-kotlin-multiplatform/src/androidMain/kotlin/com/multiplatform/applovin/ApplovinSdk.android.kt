@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.applovin.sdk.AppLovinMediationProvider
 import com.applovin.sdk.AppLovinSdk
+import com.applovin.sdk.AppLovinSdkConfiguration
 import com.applovin.sdk.AppLovinSdkInitializationConfiguration
 import com.multiplatform.applovin.ads.ApplovinAdView
 import com.multiplatform.applovin.ads.ApplovinInterstitialAd
@@ -24,27 +25,33 @@ actual class ApplovinSdk {
         onInitialized: () -> Unit,
         debugMode: Boolean,
         testDeviceIds: List<String>,
-        urlTerm: String
+        privacyPolicyUrl: String,
+        termsOfServiceUrl: String,
+        showTermsAndPrivacyAlertInGdpr: Boolean
     ) {
         context ?: throw IllegalStateException("Context not set. Call setContext() first")
+
+        val settings = AppLovinSdk.getInstance(context).settings
+        settings.apply {
+            //settings.userIdentifier = userIdentifier
+            setVerboseLogging(debugMode)
+            isCreativeDebuggerEnabled = debugMode
+            termsAndPrivacyPolicyFlowSettings.apply {
+                isEnabled = true
+                privacyPolicyUri = Uri.parse(privacyPolicyUrl)
+                termsOfServiceUri = Uri.parse(termsOfServiceUrl)
+                setShowTermsAndPrivacyPolicyAlertInGdpr(showTermsAndPrivacyAlertInGdpr)
+                if (debugMode) {
+                    debugUserGeography = AppLovinSdkConfiguration.ConsentFlowUserGeography.GDPR
+                }
+            }
+        }
 
         val initConfig = AppLovinSdkInitializationConfiguration.builder(sdkKey)
             .setMediationProvider(AppLovinMediationProvider.MAX)
             .setTestDeviceAdvertisingIds(testDeviceIds)
             .build()
-
-        val applovinSdk = AppLovinSdk.getInstance(context)
-        applovinSdk.apply {
-            //settings.userIdentifier = userIdentifier
-            settings.setVerboseLogging(debugMode)
-            settings.isCreativeDebuggerEnabled = debugMode
-            settings.termsAndPrivacyPolicyFlowSettings.apply {
-                isEnabled = true
-                privacyPolicyUri = Uri.parse(urlTerm)
-                termsOfServiceUri = Uri.parse(urlTerm)
-            }
-        }
-        applovinSdk.initialize(initConfig) {
+        AppLovinSdk.getInstance(context).initialize(initConfig) {
             onInitialized()
         }
 

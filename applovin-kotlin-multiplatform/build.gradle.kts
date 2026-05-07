@@ -57,6 +57,7 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.lifecycle.process)
             api(libs.applovin.sdk)
+            api(libs.google.user.messaging.platform)
             api(libs.services.ads.identifier)
             api("androidx.constraintlayout:constraintlayout:2.2.1")
             api("com.google.android.material:material:1.14.0-rc01")

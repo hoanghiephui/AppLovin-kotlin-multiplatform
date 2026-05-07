@@ -227,6 +227,28 @@ class NativeAdPlacerState(
      */
     fun refreshAll() = adPool.forEach { it.refresh() }
 
+    /**
+     * Number of ad slots that are currently visible in the feed while preserving slot order.
+     *
+     * Visibility is limited to the longest ready prefix from slot 0:
+     * - slot 1 cannot appear before slot 0 is ready
+     * - slot 2 cannot appear before slots 0 and 1 are ready
+     *
+     * This prevents position jumps (e.g. first visible ad suddenly starting at a later slot)
+     * and avoids odd DirectoryCard rows before the first ad in 2-column grids.
+     */
+    private fun readyPrefixVisibleCount(contentCount: Int): Int {
+        var visible = 0
+        for (slot in adIndices.indices) {
+            val state = adPool.getOrNull(slot) ?: break
+            if (!state.isAdReady) break
+            // Valid only when enough content precedes this slot.
+            if (adIndices[slot] - slot >= contentCount) break
+            visible++
+        }
+        return visible
+    }
+
     // -------------------------------------------------------------------------
     // Ready-aware API (preferred for feed rendering)
     //
@@ -249,7 +271,7 @@ class NativeAdPlacerState(
      */
     fun isReadyAdAt(adjustedIndex: Int): Boolean {
         val slot = adIndexToSlot[adjustedIndex] ?: return false
-        return adPool.getOrNull(slot)?.isAdReady == true
+        return slot < readyPrefixVisibleCount(Int.MAX_VALUE) && adPool.getOrNull(slot)?.isAdReady == true
     }
 
     /**
@@ -265,13 +287,7 @@ class NativeAdPlacerState(
      * the unlikely case where an early slot fails and a later slot is ready first.
      */
     fun readyAdjustedSize(contentCount: Int): Int {
-        var count = 0
-        for ((slot, idx) in adIndices.withIndex()) {
-            if (adPool.getOrNull(slot)?.isAdReady != true) continue
-            // Validity: enough content precedes this position in the full combined stream.
-            if (idx - slot < contentCount) count++
-        }
-        return contentCount + count
+        return contentCount + readyPrefixVisibleCount(contentCount)
     }
 
     /**
@@ -287,9 +303,11 @@ class NativeAdPlacerState(
      */
     fun readyContentIndexFor(adjustedIndex: Int): Int {
         var readyAdsBeforeIndex = 0
+        val visiblePrefixCount = readyPrefixVisibleCount(Int.MAX_VALUE)
         for ((slot, idx) in adIndices.withIndex()) {
+            if (slot >= visiblePrefixCount) break
             if (idx >= adjustedIndex) break
-            if (adPool.getOrNull(slot)?.isAdReady == true) readyAdsBeforeIndex++
+            readyAdsBeforeIndex++
         }
         return adjustedIndex - readyAdsBeforeIndex
     }
