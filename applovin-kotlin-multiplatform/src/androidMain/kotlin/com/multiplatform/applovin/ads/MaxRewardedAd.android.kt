@@ -17,20 +17,34 @@ actual class ApplovinRewardedAd actual constructor(actual val adUnitId: String) 
     actual val isReady: Boolean
         get() = rewardedAds?.isReady ?: false
 
-    internal fun initialize() {
+    actual fun initialize() {
         if (rewardedAds == null) {
             rewardedAds = MaxRewardedAd.getInstance(adUnitId)
         }
     }
 
     actual fun loadAd() {
+        // Lazily initialize so callers do not need to call initialize() explicitly.
+        initialize()
         rewardedAds?.loadAd()
-            ?: throw IllegalStateException("Ad not initialized. SDK must be initialized first.")
     }
 
     actual fun showAd() {
         if (rewardedAds?.isReady == true) {
+            @Suppress("DEPRECATION")
             rewardedAds?.showAd()
+        }
+    }
+
+    /**
+     * Shows the rewarded ad using the recommended Activity-based API.
+     *
+     * AppLovin MAX requires an [Activity] reference to display the ad overlay correctly.
+     * Always prefer this overload over the no-arg [showAd] on Android.
+     */
+    fun showAd(activity: android.app.Activity) {
+        if (rewardedAds?.isReady == true) {
+            rewardedAds?.showAd(activity)
         }
     }
 

@@ -1,6 +1,9 @@
 package com.multiplatform.applovin.native
 
+import android.content.res.ColorStateList
 import android.content.res.Resources
+import android.graphics.Color
+import android.view.ContextThemeWrapper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
@@ -8,12 +11,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.view.ViewCompat
 import com.applovin.mediation.MaxAd
 import com.applovin.mediation.MaxError
 import com.applovin.mediation.nativeAds.MaxNativeAdListener
 import com.applovin.mediation.nativeAds.MaxNativeAdLoader
 import com.applovin.mediation.nativeAds.MaxNativeAdView
 import com.applovin.mediation.nativeAds.MaxNativeAdViewBinder
+import com.google.android.material.button.MaterialButton
 import com.multiplatform.applovin.utils.AdRetryState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -27,6 +32,31 @@ import kotlinx.coroutines.launch
  * resource processing applies. At runtime all app resources are accessible via [Context.packageName]
  * in [Resources.getIdentifier].
  */
+/**
+ * Applies the Twitch brand purple tint to the CTA [MaterialButton].
+ *
+ * Text colors for TextViews are handled automatically by the Material3 DayNight theme
+ * applied via [ContextThemeWrapper] at [MaxNativeAdView] creation time — no programmatic
+ * color setting is needed for them.
+ *
+ * [MaterialButton] responds correctly to [ViewCompat.setBackgroundTintList], which operates
+ * on the tint layer rather than mutating the drawable directly. This is the only reliable
+ * way to override a [MaterialButton]'s background color at runtime.
+ *
+ * @param adView the [MaxNativeAdView] after inflation; the CTA button is located via resource ID.
+ */
+private fun applyCtaButtonTint(adView: MaxNativeAdView) {
+    val res = adView.resources
+    val pkg = adView.context.packageName
+    val ctaId = res.getIdentifier("cta_button", "id", pkg)
+    adView.findViewById<MaterialButton>(ctaId)?.let { btn ->
+        // Twitch purple — sufficient contrast against both light and dark backgrounds.
+        val twitchPurple = ColorStateList.valueOf(Color.parseColor("#9146FF"))
+        ViewCompat.setBackgroundTintList(btn, twitchPurple)
+        btn.setTextColor(Color.WHITE)
+    }
+}
+
 private fun Resources.libLayout(name: String, pkg: String): Int =
     getIdentifier(name, "layout", pkg)
 
@@ -123,10 +153,6 @@ actual fun rememberNativeAd(
     // onDispose sees the latest value even after recomposition.
     val loadedAdHolder = remember { object { var ad: MaxAd? = null } }
 
-    // Build the view binder once; it maps layout/view IDs to native ad asset slots.
-    // Resource IDs are resolved at runtime via context.packageName because the
-    // com.android.kotlin.multiplatform.library plugin does not package androidMain/res — the
-    // layout lives in androidApp/src/main/res and is accessible via the app package name.
     val binder = remember(adUnitId) {
         val res = context.resources
         val pkg = context.packageName
@@ -144,7 +170,20 @@ actual fun rememberNativeAd(
 
     // NativeAdView is the render target — inflates max_native_ad_view.xml and holds all
     // sub-views AppLovin will populate. Created ONCE; reused across reloads and expiries.
-    val nativeAdView = remember(adUnitId, adPlacement) { MaxNativeAdView(binder, context) }
+    //
+    // IMPORTANT: wrap the base context with a Material3 DayNight ContextThemeWrapper so that
+    // all XML theme attributes (?attr/colorOnSurface, ?attr/colorOnSurfaceVariant, etc.) and
+    // MaterialButton styles resolve correctly. The Activity theme is Theme.DeviceDefault which
+    // has no Material attrs, so without this wrapper all colors would fall back to defaults.
+    // ContextThemeWrapper.resources inherits the correct night/day configuration from the
+    // original context, so dark-mode switching works automatically.
+    val nativeAdView = remember(adUnitId, adPlacement) {
+        val themedContext = ContextThemeWrapper(
+            context,
+            com.google.android.material.R.style.Theme_Material3_DayNight,
+        )
+        MaxNativeAdView(binder, themedContext).also { applyCtaButtonTint(it) }
+    }
 
     val nativeAdLoader = remember(adUnitId, adPlacement) {
         MaxNativeAdLoader(adUnitId).apply {
@@ -182,6 +221,7 @@ actual fun rememberNativeAd(
 
                 override fun onNativeAdExpired(ad: MaxAd) {
                     // Transparent refresh: reload into the same view so isAdReady stays true.
+                    // Colors will be re-applied by the next onNativeAdLoaded callback.
                     loadAd(nativeAdView)
                 }
             })
