@@ -30,29 +30,28 @@ actual class ApplovinSdk {
         showTermsAndPrivacyAlertInGdpr: Boolean
     ) {
         context ?: throw IllegalStateException("Context not set. Call setContext() first")
-
-        val settings = AppLovinSdk.getInstance(context).settings
-        settings.apply {
-            //settings.userIdentifier = userIdentifier
-            setVerboseLogging(debugMode)
-            isCreativeDebuggerEnabled = debugMode
-            termsAndPrivacyPolicyFlowSettings.apply {
-                isEnabled = true
-                privacyPolicyUri = Uri.parse(privacyPolicyUrl)
-                termsOfServiceUri = Uri.parse(termsOfServiceUrl)
-                setShowTermsAndPrivacyPolicyAlertInGdpr(showTermsAndPrivacyAlertInGdpr)
-                if (debugMode) {
-                    debugUserGeography = AppLovinSdkConfiguration.ConsentFlowUserGeography.GDPR
+        AppLovinSdk.getInstance(context).apply {
+            settings.apply {
+                //settings.userIdentifier = userIdentifier
+                setVerboseLogging(debugMode)
+                isCreativeDebuggerEnabled = debugMode
+                termsAndPrivacyPolicyFlowSettings.apply {
+                    isEnabled = true
+                    privacyPolicyUri = Uri.parse(privacyPolicyUrl)
+                    termsOfServiceUri = Uri.parse(termsOfServiceUrl)
+                    setShowTermsAndPrivacyPolicyAlertInGdpr(showTermsAndPrivacyAlertInGdpr)
+                    if (debugMode) {
+                        debugUserGeography = AppLovinSdkConfiguration.ConsentFlowUserGeography.GDPR
+                    }
                 }
             }
-        }
-
-        val initConfig = AppLovinSdkInitializationConfiguration.builder(sdkKey)
-            .setMediationProvider(AppLovinMediationProvider.MAX)
-            .setTestDeviceAdvertisingIds(testDeviceIds)
-            .build()
-        AppLovinSdk.getInstance(context).initialize(initConfig) {
-            onInitialized()
+            val initConfig = AppLovinSdkInitializationConfiguration.builder(sdkKey)
+                .setMediationProvider(AppLovinMediationProvider.MAX)
+                .setTestDeviceAdvertisingIds(testDeviceIds)
+                .build()
+            initialize(initConfig) {
+                onInitialized()
+            }
         }
 
     }

@@ -338,6 +338,9 @@ class NativeAdPlacerState(
  * @param adUnitId AppLovin MAX ad unit ID for this native ad placement.
  * @param adPlacement Descriptive placement name used for AppLovin reporting (e.g. `"BrowseGrid"`).
  *   All slots share the same placement so impressions aggregate correctly in the dashboard.
+ * @param isDark Whether the app is currently displaying in dark mode. Pass the app-level dark
+ *   theme flag (e.g. `TwitchTheme.isDark`) rather than relying on the system setting so that
+ *   in-app theme overrides (Light / Dark / Auto) are respected correctly.
  * @param fixedPositions Indices in the combined (content + ad) stream where ads appear first.
  *   Defaults to `[3]` — first ad after 3 content items.
  * @param repeatingInterval After the last fixed position, insert an ad every N combined-stream
@@ -353,6 +356,7 @@ class NativeAdPlacerState(
 fun rememberNativeAdPlacer(
     adUnitId: String,
     adPlacement: String,
+    isDark: Boolean,
     fixedPositions: List<Int> = listOf(3),
     repeatingInterval: Int = 5,
     maxAdCount: Int = 10,
@@ -375,6 +379,7 @@ fun rememberNativeAdPlacer(
     val slot0 = rememberNativeAd(
         adUnitId = adUnitId,
         adPlacement = adPlacement,
+        isDark = isDark,
         autoLoad = true,
         onAdLoaded = { if (0 < effectiveMax) onAdLoaded(0) },
         onAdLoadFailed = { e -> if (0 < effectiveMax) onAdLoadFailed(0, e) },
@@ -382,6 +387,7 @@ fun rememberNativeAdPlacer(
     val slot1 = rememberNativeAd(
         adUnitId = adUnitId,
         adPlacement = adPlacement,
+        isDark = isDark,
         autoLoad = false,
         onAdLoaded = { if (1 < effectiveMax) onAdLoaded(1) },
         onAdLoadFailed = { e -> if (1 < effectiveMax) onAdLoadFailed(1, e) },
@@ -389,6 +395,7 @@ fun rememberNativeAdPlacer(
     val slot2 = rememberNativeAd(
         adUnitId = adUnitId,
         adPlacement = adPlacement,
+        isDark = isDark,
         autoLoad = false,
         onAdLoaded = { if (2 < effectiveMax) onAdLoaded(2) },
         onAdLoadFailed = { e -> if (2 < effectiveMax) onAdLoadFailed(2, e) },
@@ -396,6 +403,7 @@ fun rememberNativeAdPlacer(
     val slot3 = rememberNativeAd(
         adUnitId = adUnitId,
         adPlacement = adPlacement,
+        isDark = isDark,
         autoLoad = false,
         onAdLoaded = { if (3 < effectiveMax) onAdLoaded(3) },
         onAdLoadFailed = { e -> if (3 < effectiveMax) onAdLoadFailed(3, e) },

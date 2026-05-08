@@ -216,6 +216,7 @@ actual class NativeAdState(
 actual fun rememberNativeAd(
     adUnitId: String,
     adPlacement: String,
+    isDark: Boolean,
     autoLoad: Boolean,
     onAdLoaded: () -> Unit,
     onAdLoadFailed: (error: String) -> Unit,

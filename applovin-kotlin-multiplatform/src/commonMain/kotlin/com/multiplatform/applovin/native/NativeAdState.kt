@@ -62,6 +62,9 @@ expect class NativeAdState {
  *
  * @param adUnitId AppLovin MAX ad unit ID for this placement.
  * @param adPlacement Descriptive placement name used for AppLovin reporting (e.g. "BrowseCategories").
+ * @param isDark Whether the app is currently displaying in dark mode. Pass the app-level dark
+ *   theme flag (e.g. `TwitchTheme.isDark`) rather than relying on the system setting so that
+ *   in-app theme overrides (Light / Dark / Auto) are respected correctly.
  * @param onAdLoaded Invoked on the main thread when the native ad creative is ready.
  * @param onAdLoadFailed Invoked on the main thread when the ad fails to load after all
  *   retry attempts; receives an error description string.
@@ -76,6 +79,7 @@ expect class NativeAdState {
 expect fun rememberNativeAd(
     adUnitId: String,
     adPlacement: String,
+    isDark: Boolean,
     /**
      * When `true` (the default) the ad load starts immediately inside [DisposableEffect].
      * Pass `false` to defer loading until [NativeAdState.startLoad] is called — used by

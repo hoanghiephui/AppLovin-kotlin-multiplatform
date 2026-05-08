@@ -1,13 +1,13 @@
 package com.multiplatform.applovin.native
 
 import android.content.res.ColorStateList
-import android.content.res.Configuration
 import android.graphics.Color
 import android.view.ContextThemeWrapper
 import android.widget.TextView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,44 +24,46 @@ import com.multiplatform.applovin.utils.AdRetryState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.core.graphics.toColorInt
+import com.applovin.sdk.R
 
 /**
- * Applies theme-aware colors to all text views and the CTA [MaterialButton] inside [adView].
+ * Schedules theme-aware color application for all text views and the CTA [MaterialButton]
+ * inside [adView].
  *
- * ### Why programmatic, not XML attrs?
- * AppLovin inflates [MaxNativeAdView] with a [ContextThemeWrapper] that carries
- * [com.google.android.material.R.style.Theme_Material3_DayNight]. While this makes
- * [MaterialButton] inflate correctly, the ad background colour is set by the
- * advertiser's creative (typically white/light), so `?attr/colorOnSurface` may still
- * produce text that is nearly invisible against that background.
- * Hard-coded high-contrast values are the only reliable guarantee.
+ * AppLovin's binding pipeline dispatches sub-view population work on the main-thread message
+ * queue **after** [MaxNativeAdListener.onNativeAdLoaded] returns, so a plain `setTextColor`
+ * call inside that callback is immediately overwritten. Using [android.view.View.post] defers
+ * our styling to the next message-queue iteration, which runs after AppLovin's binding
+ * completes and makes the color change stick reliably.
  *
- * Night-mode detection uses [Configuration.UI_MODE_NIGHT_MASK] from [themedContext]
- * rather than from Compose so it works inside a `remember` block (non-composable context).
+ * [isDark] must come from [isSystemInDarkTheme] captured in a [MutableState] so the callback
+ * always reads the **current** dark-mode value even after the user toggles the theme, rather
+ * than a stale value baked into the `remember` closure at first composition.
  *
- * @param adView  inflated [MaxNativeAdView] to style.
- * @param themedContext the [ContextThemeWrapper] used to create [adView]; its configuration
- *   carries the correct night/day flag.
+ * @param adView inflated [MaxNativeAdView] to style.
+ * @param isDark `true` when the app is currently in dark mode.
+ * @param ids resource IDs registered by the host app via [configureNativeAdResourceIds].
  */
 private fun applyNativeAdColors(
     adView: MaxNativeAdView,
-    themedContext: ContextThemeWrapper,
+    isDark: Boolean,
     ids: NativeAdResourceIds,
 ) {
-    val isDark = (themedContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-        Configuration.UI_MODE_NIGHT_YES
-
     val titleColor = if (isDark) Color.WHITE else Color.BLACK
     val bodyColor  = if (isDark) "#ADADB8".toColorInt() else "#53535F".toColorInt()
     val ctaBg      = ColorStateList.valueOf("#9146FF".toColorInt()) // Twitch purple
     val ctaText    = Color.WHITE
 
-    adView.findViewById<TextView>(ids.titleTextViewId)?.setTextColor(titleColor)
-    adView.findViewById<TextView>(ids.advertiserTextViewId)?.setTextColor(bodyColor)
-    adView.findViewById<TextView>(ids.bodyTextViewId)?.setTextColor(bodyColor)
-    adView.findViewById<MaterialButton>(ids.callToActionButtonId)?.let { btn ->
-        ViewCompat.setBackgroundTintList(btn, ctaBg)
-        btn.setTextColor(ctaText)
+    // post() defers until after AppLovin finishes populating sub-views on the main thread,
+    // preventing our colors from being overwritten by the ad-binding pass.
+    adView.post {
+        adView.findViewById<TextView>(ids.titleTextViewId)?.setTextColor(titleColor)
+        adView.findViewById<TextView>(ids.advertiserTextViewId)?.setTextColor(bodyColor)
+        adView.findViewById<TextView>(ids.bodyTextViewId)?.setTextColor(bodyColor)
+        adView.findViewById<MaterialButton>(ids.callToActionButtonId)?.let { btn ->
+            ViewCompat.setBackgroundTintList(btn, ctaBg)
+            btn.setTextColor(ctaText)
+        }
     }
 }
 
@@ -129,6 +131,7 @@ actual class NativeAdState(
 actual fun rememberNativeAd(
     adUnitId: String,
     adPlacement: String,
+    isDark: Boolean,
     autoLoad: Boolean,
     onAdLoaded: () -> Unit,
     onAdLoadFailed: (error: String) -> Unit,
@@ -138,6 +141,12 @@ actual fun rememberNativeAd(
 ): NativeAdState {
     val context = LocalContext.current
     val nativeAdResourceIds = remember { requireNativeAdResourceIds() }
+    // isDark is provided by the caller (e.g. TwitchTheme.isDark) so in-app theme overrides
+    // (Light / Dark / Auto) are respected. Capture into a MutableState so the onNativeAdLoaded
+    // callback — which lives inside a remember closure — always reads the latest value even
+    // after the user toggles the theme between ad loads.
+    val isDarkState = remember { mutableStateOf(isDark) }
+    SideEffect { isDarkState.value = isDark }
     val isAdReady = remember { mutableStateOf(false) }
     // Observable flag set when all retry attempts are exhausted so the sequential
     // load chain in rememberNativeAdPlacer can advance to the next slot.
@@ -173,13 +182,18 @@ actual fun rememberNativeAd(
     // has no Material attrs, so without this wrapper all colors would fall back to defaults.
     // ContextThemeWrapper.resources inherits the correct night/day configuration from the
     // original context, so dark-mode switching works automatically.
+    //
     val nativeAdView = remember(adUnitId, adPlacement) {
+        // Wrap with Material3 DayNight theme so ?attr/color* and MaterialButton styles
+        // resolve correctly. Dark mode is NOT read from this context — isDarkState (above)
+        // is used instead, because themedContext is cached and would return a stale uiMode
+        // after the user toggles the theme.
         val themedContext = ContextThemeWrapper(
             context,
             com.google.android.material.R.style.Theme_Material3_DayNight,
         )
         MaxNativeAdView(binder, themedContext).also {
-            applyNativeAdColors(it, themedContext, nativeAdResourceIds)
+            applyNativeAdColors(it, isDarkState.value, nativeAdResourceIds)
         }
     }
 
