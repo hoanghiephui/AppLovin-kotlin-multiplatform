@@ -2,11 +2,9 @@ package com.multiplatform.applovin.native
 
 import android.content.res.ColorStateList
 import android.content.res.Configuration
-import android.content.res.Resources
 import android.graphics.Color
 import android.view.ContextThemeWrapper
 import android.widget.TextView
-import androidx.annotation.MainThread
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
@@ -28,49 +26,6 @@ import kotlinx.coroutines.launch
 import androidx.core.graphics.toColorInt
 
 /**
- * Resolves a layout resource ID by name from the application's merged resource set.
- *
- * **Why `Resources.getIdentifier` and not reflection on `R` inner classes?**
- * In a KMP project the ad layout lives in the *host* Android module (e.g. `androidApp`)
- * whose Gradle `namespace` differs from `applicationId` (e.g. `com.bitby.twitch.android`
- * vs `com.bitby.twitchtv`). The generated `R` class uses the namespace as its Java package,
- * so `Class.forName("${context.packageName}.R\$layout")` will always throw
- * `ClassNotFoundException` because the class file lives under a different package.
- *
- * `Resources.getIdentifier` bypasses the Java class hierarchy entirely: it queries the
- * Android asset manager's merged resource table using the runtime *application* package name
- * (`context.packageName` == `applicationId`), which is exactly how all merged resources are
- * indexed at runtime regardless of which module they originated from.
- *
- * **Thread safety:** Must be called on the **main thread**. The underlying `AssetManager2`
- * native implementation is not thread-safe and produces SIGSEGV when called concurrently
- * from background threads. All call sites in this file are inside Compose `remember {}` blocks,
- * which execute on the main thread during composition.
- *
- * @param name Layout resource name (without the `layout/` prefix).
- * @return Non-zero resource ID; throws [IllegalStateException] if the resource is not found.
- */
-@MainThread
-private fun Resources.resolveLayoutId(name: String, pkg: String): Int =
-    getIdentifier(name, "layout", pkg).also { id ->
-        check(id != 0) { "Layout resource '$name' not found in package '$pkg'" }
-    }
-
-/**
- * Resolves a view ID resource by name from the application's merged resource set.
- *
- * See [resolveLayoutId] for the rationale behind using [Resources.getIdentifier].
- *
- * @param name View resource name (without the `id/` prefix).
- * @return Non-zero resource ID; throws [IllegalStateException] if the resource is not found.
- */
-@MainThread
-private fun Resources.resolveViewId(name: String, pkg: String): Int =
-    getIdentifier(name, "id", pkg).also { id ->
-        check(id != 0) { "View ID resource '$name' not found in package '$pkg'" }
-    }
-
-/**
  * Applies theme-aware colors to all text views and the CTA [MaterialButton] inside [adView].
  *
  * ### Why programmatic, not XML attrs?
@@ -88,7 +43,11 @@ private fun Resources.resolveViewId(name: String, pkg: String): Int =
  * @param themedContext the [ContextThemeWrapper] used to create [adView]; its configuration
  *   carries the correct night/day flag.
  */
-private fun applyNativeAdColors(adView: MaxNativeAdView, themedContext: ContextThemeWrapper) {
+private fun applyNativeAdColors(
+    adView: MaxNativeAdView,
+    themedContext: ContextThemeWrapper,
+    ids: NativeAdResourceIds,
+) {
     val isDark = (themedContext.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
         Configuration.UI_MODE_NIGHT_YES
 
@@ -97,15 +56,10 @@ private fun applyNativeAdColors(adView: MaxNativeAdView, themedContext: ContextT
     val ctaBg      = ColorStateList.valueOf("#9146FF".toColorInt()) // Twitch purple
     val ctaText    = Color.WHITE
 
-    val adContext = adView.context
-    val res = adContext.resources
-    val pkg = adContext.packageName
-    fun id(name: String) = res.resolveViewId(name, pkg)
-
-    adView.findViewById<TextView>(id("title_text_view"))?.setTextColor(titleColor)
-    adView.findViewById<TextView>(id("advertiser_text_view"))?.setTextColor(bodyColor)
-    adView.findViewById<TextView>(id("body_text_view"))?.setTextColor(bodyColor)
-    adView.findViewById<MaterialButton>(id("cta_button"))?.let { btn ->
+    adView.findViewById<TextView>(ids.titleTextViewId)?.setTextColor(titleColor)
+    adView.findViewById<TextView>(ids.advertiserTextViewId)?.setTextColor(bodyColor)
+    adView.findViewById<TextView>(ids.bodyTextViewId)?.setTextColor(bodyColor)
+    adView.findViewById<MaterialButton>(ids.callToActionButtonId)?.let { btn ->
         ViewCompat.setBackgroundTintList(btn, ctaBg)
         btn.setTextColor(ctaText)
     }
@@ -153,15 +107,9 @@ actual class NativeAdState(
  * avoids an extra render step.
  *
  * ### R class cross-module resource resolution
- * The `com.android.kotlin.multiplatform.library` plugin does not expose this module's
- * generated R class during `compileAndroidMain`, and the ad layout lives in the *host*
- * Android module (e.g. `androidApp`) whose `namespace` differs from `applicationId`.
- * Therefore resource IDs are resolved via [Resources.getIdentifier] using the runtime
- * application package name (`context.packageName` == `applicationId`), which correctly
- * indexes the merged resource table regardless of the originating module's namespace.
- * All lookups are performed on the **main thread** inside Compose `remember {}` blocks
- * and the resolved integer IDs are passed directly to [MaxNativeAdViewBinder], so
- * AppLovin never needs to call [Resources.getIdentifier] from a background thread.
+ * Resource IDs come from [configureNativeAdResourceIds] in the host app
+ * (`Application.onCreate`). This avoids runtime name lookups entirely and removes
+ * any dependence on [android.content.res.Resources.getIdentifier].
  *
  * ### Object lifetimes
  * - [MaxNativeAdViewBinder] — built once; immutable.
@@ -189,6 +137,7 @@ actual fun rememberNativeAd(
     onAdRetrying: (attempt: Int, delayMs: Long) -> Unit,
 ): NativeAdState {
     val context = LocalContext.current
+    val nativeAdResourceIds = remember { requireNativeAdResourceIds() }
     val isAdReady = remember { mutableStateOf(false) }
     // Observable flag set when all retry attempts are exhausted so the sequential
     // load chain in rememberNativeAdPlacer can advance to the next slot.
@@ -201,22 +150,17 @@ actual fun rememberNativeAd(
     // onDispose sees the latest value even after recomposition.
     val loadedAdHolder = remember { object { var ad: MaxAd? = null } }
 
-    // All resource ID lookups happen here, on the main thread (Compose composition context),
-    // which is required for thread-safe AssetManager access. The resolved integer IDs are
-    // then passed directly to MaxNativeAdViewBinder, so AppLovin never needs to call
-    // getIdentifier() itself.
+    // Binder IDs are compile-time IDs provided by the host app at startup.
     val binder = remember(adUnitId) {
-        val res = context.resources
-        val pkg = context.packageName
-        MaxNativeAdViewBinder.Builder(res.resolveLayoutId("max_native_ad_view", pkg))
-            .setTitleTextViewId(res.resolveViewId("title_text_view", pkg))
-            .setBodyTextViewId(res.resolveViewId("body_text_view", pkg))
-            .setAdvertiserTextViewId(res.resolveViewId("advertiser_text_view", pkg))
-            .setIconImageViewId(res.resolveViewId("icon_image_view", pkg))
-            .setMediaContentViewGroupId(res.resolveViewId("media_view_container", pkg))
-            .setOptionsContentViewGroupId(res.resolveViewId("options_view", pkg)) // required — privacy icon
-            .setStarRatingContentViewGroupId(res.resolveViewId("star_rating_view", pkg))
-            .setCallToActionButtonId(res.resolveViewId("cta_button", pkg))
+        MaxNativeAdViewBinder.Builder(nativeAdResourceIds.layoutId)
+            .setTitleTextViewId(nativeAdResourceIds.titleTextViewId)
+            .setBodyTextViewId(nativeAdResourceIds.bodyTextViewId)
+            .setAdvertiserTextViewId(nativeAdResourceIds.advertiserTextViewId)
+            .setIconImageViewId(nativeAdResourceIds.iconImageViewId)
+            .setMediaContentViewGroupId(nativeAdResourceIds.mediaContentViewGroupId)
+            .setOptionsContentViewGroupId(nativeAdResourceIds.optionsContentViewGroupId) // required - privacy icon
+            .setStarRatingContentViewGroupId(nativeAdResourceIds.starRatingContentViewGroupId)
+            .setCallToActionButtonId(nativeAdResourceIds.callToActionButtonId)
             .build()
     }
 
@@ -234,7 +178,9 @@ actual fun rememberNativeAd(
             context,
             com.google.android.material.R.style.Theme_Material3_DayNight,
         )
-        MaxNativeAdView(binder, themedContext).also { applyNativeAdColors(it, themedContext) }
+        MaxNativeAdView(binder, themedContext).also {
+            applyNativeAdColors(it, themedContext, nativeAdResourceIds)
+        }
     }
 
     val nativeAdLoader = remember(adUnitId, adPlacement) {
