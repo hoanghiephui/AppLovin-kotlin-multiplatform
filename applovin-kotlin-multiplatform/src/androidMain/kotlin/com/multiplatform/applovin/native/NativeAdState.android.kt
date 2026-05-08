@@ -6,6 +6,7 @@ import android.content.res.Resources
 import android.graphics.Color
 import android.view.ContextThemeWrapper
 import android.widget.TextView
+import androidx.annotation.MainThread
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
@@ -27,14 +28,48 @@ import kotlinx.coroutines.launch
 import androidx.core.graphics.toColorInt
 
 /**
- * Resolves a layout resource ID using the application's package name.
+ * Resolves a layout resource ID by name from the application's merged resource set.
  *
- * The `com.android.kotlin.multiplatform.library` plugin does NOT package `androidMain/res`
- * into the library AAR — `generateAndroidMainEmptyResourceFiles` produces an empty symbol list.
- * The native ad layout therefore lives in `androidApp/src/main/res/layout/` where standard AGP
- * resource processing applies. At runtime all app resources are accessible via [Context.packageName]
- * in [Resources.getIdentifier].
+ * **Why `Resources.getIdentifier` and not reflection on `R` inner classes?**
+ * In a KMP project the ad layout lives in the *host* Android module (e.g. `androidApp`)
+ * whose Gradle `namespace` differs from `applicationId` (e.g. `com.bitby.twitch.android`
+ * vs `com.bitby.twitchtv`). The generated `R` class uses the namespace as its Java package,
+ * so `Class.forName("${context.packageName}.R\$layout")` will always throw
+ * `ClassNotFoundException` because the class file lives under a different package.
+ *
+ * `Resources.getIdentifier` bypasses the Java class hierarchy entirely: it queries the
+ * Android asset manager's merged resource table using the runtime *application* package name
+ * (`context.packageName` == `applicationId`), which is exactly how all merged resources are
+ * indexed at runtime regardless of which module they originated from.
+ *
+ * **Thread safety:** Must be called on the **main thread**. The underlying `AssetManager2`
+ * native implementation is not thread-safe and produces SIGSEGV when called concurrently
+ * from background threads. All call sites in this file are inside Compose `remember {}` blocks,
+ * which execute on the main thread during composition.
+ *
+ * @param name Layout resource name (without the `layout/` prefix).
+ * @return Non-zero resource ID; throws [IllegalStateException] if the resource is not found.
  */
+@MainThread
+private fun Resources.resolveLayoutId(name: String, pkg: String): Int =
+    getIdentifier(name, "layout", pkg).also { id ->
+        check(id != 0) { "Layout resource '$name' not found in package '$pkg'" }
+    }
+
+/**
+ * Resolves a view ID resource by name from the application's merged resource set.
+ *
+ * See [resolveLayoutId] for the rationale behind using [Resources.getIdentifier].
+ *
+ * @param name View resource name (without the `id/` prefix).
+ * @return Non-zero resource ID; throws [IllegalStateException] if the resource is not found.
+ */
+@MainThread
+private fun Resources.resolveViewId(name: String, pkg: String): Int =
+    getIdentifier(name, "id", pkg).also { id ->
+        check(id != 0) { "View ID resource '$name' not found in package '$pkg'" }
+    }
+
 /**
  * Applies theme-aware colors to all text views and the CTA [MaterialButton] inside [adView].
  *
@@ -62,9 +97,10 @@ private fun applyNativeAdColors(adView: MaxNativeAdView, themedContext: ContextT
     val ctaBg      = ColorStateList.valueOf("#9146FF".toColorInt()) // Twitch purple
     val ctaText    = Color.WHITE
 
-    val res = adView.resources
-    val pkg = adView.context.packageName
-    fun id(name: String) = res.getIdentifier(name, "id", pkg)
+    val adContext = adView.context
+    val res = adContext.resources
+    val pkg = adContext.packageName
+    fun id(name: String) = res.resolveViewId(name, pkg)
 
     adView.findViewById<TextView>(id("title_text_view"))?.setTextColor(titleColor)
     adView.findViewById<TextView>(id("advertiser_text_view"))?.setTextColor(bodyColor)
@@ -74,16 +110,6 @@ private fun applyNativeAdColors(adView: MaxNativeAdView, themedContext: ContextT
         btn.setTextColor(ctaText)
     }
 }
-
-private fun Resources.libLayout(name: String, pkg: String): Int =
-    getIdentifier(name, "layout", pkg)
-
-/**
- * Resolves a view resource ID using the application's package name.
- * See [libLayout] for why [Context.packageName] is used instead of a library namespace.
- */
-private fun Resources.libId(name: String, pkg: String): Int =
-    getIdentifier(name, "id", pkg)
 
 /**
  * Android implementation of [NativeAdState].
@@ -126,12 +152,16 @@ actual class NativeAdState(
  * [MaxNativeAdListener.onNativeAdLoaded]. This is simpler than the late-binding flow and
  * avoids an extra render step.
  *
- * ### R class workaround
- * The `com.android.kotlin.multiplatform.library` plugin does not expose the module's
- * generated R class during `compileAndroidMain`. Resource IDs are therefore resolved
- * via [Resources.getIdentifier] using [APPLOVIN_LIB_NAMESPACE] at runtime. This is
- * safe because the IDs remain stable in the merged APK and ProGuard/R8 does not shrink
- * layout or view IDs by name.
+ * ### R class cross-module resource resolution
+ * The `com.android.kotlin.multiplatform.library` plugin does not expose this module's
+ * generated R class during `compileAndroidMain`, and the ad layout lives in the *host*
+ * Android module (e.g. `androidApp`) whose `namespace` differs from `applicationId`.
+ * Therefore resource IDs are resolved via [Resources.getIdentifier] using the runtime
+ * application package name (`context.packageName` == `applicationId`), which correctly
+ * indexes the merged resource table regardless of the originating module's namespace.
+ * All lookups are performed on the **main thread** inside Compose `remember {}` blocks
+ * and the resolved integer IDs are passed directly to [MaxNativeAdViewBinder], so
+ * AppLovin never needs to call [Resources.getIdentifier] from a background thread.
  *
  * ### Object lifetimes
  * - [MaxNativeAdViewBinder] — built once; immutable.
@@ -171,18 +201,22 @@ actual fun rememberNativeAd(
     // onDispose sees the latest value even after recomposition.
     val loadedAdHolder = remember { object { var ad: MaxAd? = null } }
 
+    // All resource ID lookups happen here, on the main thread (Compose composition context),
+    // which is required for thread-safe AssetManager access. The resolved integer IDs are
+    // then passed directly to MaxNativeAdViewBinder, so AppLovin never needs to call
+    // getIdentifier() itself.
     val binder = remember(adUnitId) {
         val res = context.resources
         val pkg = context.packageName
-        MaxNativeAdViewBinder.Builder(res.libLayout("max_native_ad_view", pkg))
-            .setTitleTextViewId(res.libId("title_text_view", pkg))
-            .setBodyTextViewId(res.libId("body_text_view", pkg))
-            .setAdvertiserTextViewId(res.libId("advertiser_text_view", pkg))
-            .setIconImageViewId(res.libId("icon_image_view", pkg))
-            .setMediaContentViewGroupId(res.libId("media_view_container", pkg))
-            .setOptionsContentViewGroupId(res.libId("options_view", pkg)) // required — privacy icon
-            .setStarRatingContentViewGroupId(res.libId("star_rating_view", pkg))
-            .setCallToActionButtonId(res.libId("cta_button", pkg))
+        MaxNativeAdViewBinder.Builder(res.resolveLayoutId("max_native_ad_view", pkg))
+            .setTitleTextViewId(res.resolveViewId("title_text_view", pkg))
+            .setBodyTextViewId(res.resolveViewId("body_text_view", pkg))
+            .setAdvertiserTextViewId(res.resolveViewId("advertiser_text_view", pkg))
+            .setIconImageViewId(res.resolveViewId("icon_image_view", pkg))
+            .setMediaContentViewGroupId(res.resolveViewId("media_view_container", pkg))
+            .setOptionsContentViewGroupId(res.resolveViewId("options_view", pkg)) // required — privacy icon
+            .setStarRatingContentViewGroupId(res.resolveViewId("star_rating_view", pkg))
+            .setCallToActionButtonId(res.resolveViewId("cta_button", pkg))
             .build()
     }
 
