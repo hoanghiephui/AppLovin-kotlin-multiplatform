@@ -39,7 +39,7 @@ actual class ApplovinSdk {
         settings.verboseLoggingEnabled = debugMode
         settings.setCreativeDebuggerEnabled(debugMode)
         settings.termsAndPrivacyPolicyFlowSettings.apply {
-            enabled = true
+            enabled = false
             privacyPolicyURL = NSURL.URLWithString(privacyPolicyUrl)
             termsOfServiceURL = NSURL.URLWithString(termsOfServiceUrl)
             showTermsAndPrivacyPolicyAlertInGDPR = showTermsAndPrivacyAlertInGdpr
