@@ -30,6 +30,7 @@ kotlin {
         pod("AppLovinSDK") {
             version = "13.6.2"
         }
+        pod("AppLovinMediationInMobiAdapter")
     }
 
     listOf(
