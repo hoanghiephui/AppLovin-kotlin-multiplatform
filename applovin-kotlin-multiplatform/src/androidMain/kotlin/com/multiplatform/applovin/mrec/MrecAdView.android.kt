@@ -30,6 +30,7 @@ actual fun MrecAdView(
     modifier: Modifier,
 ) {
     val adView = adState.nativeAdView
+
     AndroidView(
         factory = { ctx ->
             FrameLayout(ctx).also { container ->
@@ -44,6 +45,40 @@ actual fun MrecAdView(
                 )
             }
         },
+        update = { container ->
+            if (adView.parent !== container) {
+                (adView.parent as? ViewGroup)?.removeView(adView)
+                container.addView(
+                    adView,
+                    FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                    ),
+                )
+            }
+        },
+        onReset = { container ->
+            // Called when the AndroidView is recycled by LazyList item reuse.
+            // Re-attach the singleton adView into this container if it was detached
+            // by a previous onRelease, or if it ended up in a different parent.
+            if (adView.parent !== container) {
+                (adView.parent as? ViewGroup)?.removeView(adView)
+                container.addView(
+                    adView,
+                    FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                    ),
+                )
+            }
+        },
+        onRelease = { container ->
+            // Detach adView from the FrameLayout container so it can be safely
+            // re-parented by the next factory or onReset call without
+            // "The specified child already has a parent" IllegalStateException.
+            container.removeAllViews()
+        },
         modifier = modifier.fillMaxWidth(),
     )
 }
+

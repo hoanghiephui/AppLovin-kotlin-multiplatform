@@ -93,7 +93,7 @@ class NativeAdPlacerState(
         // Phase 1: fixed positions — sorted and deduplicated, same as AppLovin's TreeSet
         // input via MaxAdPlacerSettings.getFixedPositions().
         for (pos in fixedPositions.sorted().distinct()) {
-            if (size >= maxAdCount || size >= adPool.size) break
+            if (size >= maxAdCount) break
             add(pos)
         }
         // Phase 2: repeating positions after the last fixed position.
@@ -103,7 +103,7 @@ class NativeAdPlacerState(
         // + repeatingInterval when the list is empty — behaviour is identical.
         if (repeatingInterval >= 2) {
             var next = (lastOrNull() ?: -1) + repeatingInterval
-            while (size < maxAdCount && size < adPool.size) {
+            while (size < maxAdCount) {
                 add(next)
                 next += repeatingInterval
             }
@@ -152,7 +152,8 @@ class NativeAdPlacerState(
      */
     fun adStateAt(adjustedIndex: Int): NativeAdState? {
         val slot = adIndexToSlot[adjustedIndex] ?: return null
-        return adPool.getOrNull(slot)
+        if (adPool.isEmpty()) return null
+        return adPool.getOrNull(slot % adPool.size)
     }
 
     /**
@@ -239,8 +240,9 @@ class NativeAdPlacerState(
      */
     private fun readyPrefixVisibleCount(contentCount: Int): Int {
         var visible = 0
+        if (adPool.isEmpty()) return 0
         for (slot in adIndices.indices) {
-            val state = adPool.getOrNull(slot) ?: break
+            val state = adPool.getOrNull(slot % adPool.size) ?: break
             if (!state.isAdReady) break
             // Valid only when enough content precedes this slot.
             if (adIndices[slot] - slot >= contentCount) break
@@ -271,7 +273,8 @@ class NativeAdPlacerState(
      */
     fun isReadyAdAt(adjustedIndex: Int): Boolean {
         val slot = adIndexToSlot[adjustedIndex] ?: return false
-        return slot < readyPrefixVisibleCount(Int.MAX_VALUE) && adPool.getOrNull(slot)?.isAdReady == true
+        if (adPool.isEmpty()) return false
+        return slot < readyPrefixVisibleCount(Int.MAX_VALUE) && adPool.getOrNull(slot % adPool.size)?.isAdReady == true
     }
 
     /**
@@ -437,12 +440,12 @@ fun rememberNativeAdPlacer(
 
     // NativeAdPlacerState is cheap to recreate and only rebuilt when position parameters
     // or the pool identity changes.
-    return remember(adUnitId, adPlacement, fixedPositions, repeatingInterval, effectiveMax) {
+    return remember(adUnitId, adPlacement, fixedPositions, repeatingInterval, maxAdCount) {
         NativeAdPlacerState(
             adPool = pool,
             fixedPositions = fixedPositions,
             repeatingInterval = repeatingInterval,
-            maxAdCount = effectiveMax,
+            maxAdCount = maxAdCount,
         )
     }
 }
