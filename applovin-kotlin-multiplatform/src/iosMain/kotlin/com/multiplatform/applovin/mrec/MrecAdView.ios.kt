@@ -10,8 +10,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.UIKitView
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.UIKit.UIView
-import platform.UIKit.UIViewAutoresizingFlexibleHeight
-import platform.UIKit.UIViewAutoresizingFlexibleWidth
 
 /**
  * iOS actual for [MrecAdView].
@@ -29,7 +27,6 @@ actual fun MrecAdView(
     adState: MrecAdState,
     modifier: Modifier,
 ) {
-    val adView = adState.nativeAdView
 
     UIKitView(
         factory = { adState.nativeAdView },
