@@ -348,8 +348,11 @@ class NativeAdPlacerState(
  *   Defaults to `[3]` — first ad after 3 content items.
  * @param repeatingInterval After the last fixed position, insert an ad every N combined-stream
  *   slots. Must be ≥ 2. Defaults to `5` (i.e., ad at every 5th position after the last fixed).
- * @param maxAdCount Hard cap on total ad slots. Values above [POOL_SIZE] are clamped to
- *   [POOL_SIZE] since the pool has a fixed size.
+ * @param maxAdCount Hard cap on total ad slots. Values above [POOL_SIZE] are allowed and
+ *   cause the pool to **cycle**: slot `i` maps to `pool[i % POOL_SIZE]`, so the same
+ *   [POOL_SIZE] unique creatives are reused across multiple positions in the feed.
+ *   Example: `maxAdCount = 100` with `fixedPositions=[2]`, `repeatingInterval=5` produces
+ *   7 ad positions ([2,7,12,17,22,27,32]) for a 30-item feed, cycling 4 creatives.
  * @param onAdLoaded Invoked on the main thread when a slot's ad finishes loading; receives
  *   the 0-based slot index.
  * @param onAdLoadFailed Invoked on the main thread when a slot exhausts all retries; receives
@@ -440,6 +443,16 @@ fun rememberNativeAdPlacer(
 
     // NativeAdPlacerState is cheap to recreate and only rebuilt when position parameters
     // or the pool identity changes.
+    //
+    // Pass the raw maxAdCount (not effectiveMax) so adIndices can contain more entries than
+    // POOL_SIZE when cycling is desired. The pool only has POOL_SIZE unique creatives, but
+    // adStateAt() uses `slot % adPool.size` to cycle them across multiple positions, allowing
+    // e.g. 7 ad slots with 4 unique creatives in a 30-item feed.
+    //
+    // Crash safety: the calling screen must pre-compute ready-ad positions atomically via
+    // derivedStateOf BEFORE the lazy items block (see readyAdPositions in each screen).
+    // This prevents the key-lambda race condition that previously caused:
+    //   IllegalArgumentException: Key dir_X was used multiple times
     return remember(adUnitId, adPlacement, fixedPositions, repeatingInterval, maxAdCount) {
         NativeAdPlacerState(
             adPool = pool,
