@@ -1,18 +1,18 @@
 [versions]
 agp = "9.2.1"
-kotlin = "2.3.21"
+kotlin = "2.4.0"
 android-minSdk = "26"
 android-compileSdk = "37"
 kotlinxCoroutinesCore = "1.11.0"
 lifecycleProcess = "2.10.0"
-compose = "1.10.3"
-compose-compiler = "2.3.21"
+compose = "1.11.1"
+compose-compiler = "2.4.0"
 vanniktech = "0.36.0"
 swiftklib = "0.6.4"
 applovin-sdk = "13.6.2"
-cocopods = "2.3.21"
+cocopods = "2.4.0"
 services-ads-identifier = "18.3.0"
-mediation-google = "25.2.0.0"
+mediation-google = "25.3.0.0"
 google-ump = "4.0.0"
 
 [libraries]
