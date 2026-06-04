@@ -10,7 +10,7 @@ Pod::Spec.new do |spec|
     spec.libraries                = 'c++'
     spec.ios.deployment_target    = '15.0'
     spec.dependency 'AppLovinMediationInMobiAdapter'
-    spec.dependency 'AppLovinSDK', '13.6.2'
+    spec.dependency 'AppLovinSDK', '13.6.3'
     if !Dir.exist?('build/cocoapods/framework/applovin_kotlin_multiplatform.framework') || Dir.empty?('build/cocoapods/framework/applovin_kotlin_multiplatform.framework')
         raise "
         Kotlin framework 'applovin_kotlin_multiplatform' doesn't exist yet, so a proper Xcode project can't be generated.
