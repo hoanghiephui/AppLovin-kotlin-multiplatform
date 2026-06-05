@@ -2,6 +2,7 @@
 
 package com.multiplatform.applovin
 
+import co.touchlab.kermit.Logger
 import cocoapods.AppLovinSDK.ALMediationProviderMAX
 import cocoapods.AppLovinSDK.ALSdk
 import cocoapods.AppLovinSDK.ALSdkInitializationConfiguration
@@ -13,6 +14,7 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSURL
 
 actual class ApplovinSdk {
+    private val logger = Logger.withTag("AppLovin")
 
     actual fun initialize(
         sdkKey: String,
@@ -24,6 +26,10 @@ actual class ApplovinSdk {
         termsOfServiceUrl: String,
         showTermsAndPrivacyAlertInGdpr: Boolean
     ) {
+        logger.i {
+            "[ApplovinSdk.ios] initialize called (debugMode=$debugMode, testDeviceIdsCount=${testDeviceIds.size})"
+        }
+
         // Create the initialization configuration with mediationProvider set to MAX
         val initConfig = ALSdkInitializationConfiguration
             .builderWithSdkKey(sdkKey)
@@ -38,6 +44,9 @@ actual class ApplovinSdk {
         //settings.userIdentifier = userIdentifier
         settings.verboseLoggingEnabled = debugMode
         settings.setCreativeDebuggerEnabled(debugMode)
+        logger.i {
+            "[ApplovinSdk.ios] settings applied (verboseLoggingEnabled=${settings.verboseLoggingEnabled}, creativeDebuggerEnabledRequested=$debugMode)"
+        }
         settings.termsAndPrivacyPolicyFlowSettings.apply {
             enabled = false
             privacyPolicyURL = NSURL.URLWithString(privacyPolicyUrl)
@@ -49,6 +58,7 @@ actual class ApplovinSdk {
         ALSdk.shared().initializeWithConfiguration(
             initializationConfiguration = initConfig,
             completionHandler = {
+                logger.i { "[ApplovinSdk.ios] SDK initialization callback fired" }
                 onInitialized()
             }
         )

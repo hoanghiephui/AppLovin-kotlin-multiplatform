@@ -14,8 +14,10 @@ cocopods = "2.4.0"
 services-ads-identifier = "18.3.0"
 mediation-google = "25.3.0.0"
 google-ump = "4.0.0"
+kermit = "2.1.0"
 
 [libraries]
+kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutinesCore" }
 lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycleProcess" }
 applovin-sdk = { group = "com.applovin", name = "applovin-sdk", version.ref = "applovin-sdk" }

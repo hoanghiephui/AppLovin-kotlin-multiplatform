@@ -22,6 +22,7 @@ import platform.CoreGraphics.CGRectMake
 import platform.UIKit.UIColor
 import platform.UIKit.UIScreen
 import platform.darwin.NSObject
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * iOS implementation of [MrecAdState].
@@ -102,13 +103,14 @@ actual fun rememberMrecAd(
                     // Exponential back-off: retry 1 → 2s, retry 2 → 4s, retry 3 → 8s.
                     val delayMs = retryState.incrementAndGetDelayMs()
                     retryState.setJob(scope.launch {
-                        delay(delayMs)
+                        delay(delayMs.milliseconds)
                         adView.loadAd()
                     })
                 } else {
                     // All retries exhausted — surface the failure to the caller.
                     onAdLoadFailed(error)
                 }
+                isAdReady.value = false
             },
         )
     }

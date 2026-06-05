@@ -14,6 +14,7 @@ import com.applovin.mediation.ads.MaxAdView
 import com.multiplatform.applovin.utils.AdRetryState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Android implementation of [MrecAdState].
@@ -73,13 +74,14 @@ actual fun rememberMrecAd(
                         // Exponential back-off: retry 1 → 2s, retry 2 → 4s, retry 3 → 8s.
                         val delayMs = retryState.incrementAndGetDelayMs()
                         retryState.setJob(scope.launch {
-                            delay(delayMs)
+                            delay(delayMs.milliseconds)
                             loadAd()
                         })
                     } else {
                         // All retries exhausted — surface the failure to the caller.
                         onAdLoadFailed(error.message)
                     }
+                    isAdReady.value = false
                 }
 
                 override fun onAdClicked(ad: MaxAd) {}
