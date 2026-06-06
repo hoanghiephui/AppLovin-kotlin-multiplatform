@@ -39,25 +39,21 @@ actual class ApplovinSdk {
             }
             .build()
 
-        // Configure the SDK settings before SDK initialization
-        val settings = ALSdk.shared().settings
-        //settings.userIdentifier = userIdentifier
-        settings.verboseLoggingEnabled = debugMode
-        settings.setCreativeDebuggerEnabled(debugMode)
-        logger.d {
-            "[ApplovinSdk.ios] settings applied (verboseLoggingEnabled=${settings.verboseLoggingEnabled}, creativeDebuggerEnabledRequested=$debugMode)"
-        }
-        settings.termsAndPrivacyPolicyFlowSettings.apply {
-            enabled = false
-            privacyPolicyURL = NSURL.URLWithString(privacyPolicyUrl)
-            termsOfServiceURL = NSURL.URLWithString(termsOfServiceUrl)
-            showTermsAndPrivacyPolicyAlertInGDPR = showTermsAndPrivacyAlertInGdpr
-        }
-
         // Initialize the SDK with the configuration
         ALSdk.shared().initializeWithConfiguration(
             initializationConfiguration = initConfig,
             completionHandler = {
+                val settings = ALSdk.shared().settings
+                //settings.userIdentifier = userIdentifier
+                settings.verboseLoggingEnabled = debugMode
+                settings.setCreativeDebuggerEnabled(debugMode)
+                settings.termsAndPrivacyPolicyFlowSettings.apply {
+                    enabled = false
+                    privacyPolicyURL = NSURL.URLWithString(privacyPolicyUrl)
+                    termsOfServiceURL = NSURL.URLWithString(termsOfServiceUrl)
+                    showTermsAndPrivacyPolicyAlertInGDPR = showTermsAndPrivacyAlertInGdpr
+                }
+
                 onInitialized()
                 logger.i { "[ApplovinSdk.ios] SDK initialization callback" }
             }

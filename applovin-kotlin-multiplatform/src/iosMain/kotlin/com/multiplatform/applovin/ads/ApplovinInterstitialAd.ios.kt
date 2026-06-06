@@ -24,6 +24,7 @@ actual class ApplovinInterstitialAd actual constructor(
     actual fun initialize() {
         if (nativeAd == null) {
             nativeAd = MAInterstitialAd(adUnitId)
+            delegate?.let { nativeAd?.setDelegate(it) }
         }
     }
 
