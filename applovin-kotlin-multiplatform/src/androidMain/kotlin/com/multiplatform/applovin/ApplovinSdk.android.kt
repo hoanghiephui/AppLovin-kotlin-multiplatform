@@ -10,6 +10,7 @@ import com.multiplatform.applovin.ads.ApplovinAdView
 import com.multiplatform.applovin.ads.ApplovinInterstitialAd
 import com.multiplatform.applovin.ads.ApplovinRewardedAd
 import com.multiplatform.applovin.banner.AdFormat
+import androidx.core.net.toUri
 
 actual class ApplovinSdk {
 
@@ -37,8 +38,8 @@ actual class ApplovinSdk {
                 isCreativeDebuggerEnabled = debugMode
                 termsAndPrivacyPolicyFlowSettings.apply {
                     isEnabled = true
-                    privacyPolicyUri = Uri.parse(privacyPolicyUrl)
-                    termsOfServiceUri = Uri.parse(termsOfServiceUrl)
+                    privacyPolicyUri = privacyPolicyUrl.toUri()
+                    termsOfServiceUri = termsOfServiceUrl.toUri()
                     setShowTermsAndPrivacyPolicyAlertInGdpr(showTermsAndPrivacyAlertInGdpr)
                     if (debugMode) {
                         debugUserGeography = AppLovinSdkConfiguration.ConsentFlowUserGeography.GDPR

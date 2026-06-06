@@ -26,7 +26,7 @@ actual class ApplovinSdk {
         termsOfServiceUrl: String,
         showTermsAndPrivacyAlertInGdpr: Boolean
     ) {
-        logger.i {
+        logger.d {
             "[ApplovinSdk.ios] initialize called (debugMode=$debugMode, testDeviceIdsCount=${testDeviceIds.size})"
         }
 
@@ -44,7 +44,7 @@ actual class ApplovinSdk {
         //settings.userIdentifier = userIdentifier
         settings.verboseLoggingEnabled = debugMode
         settings.setCreativeDebuggerEnabled(debugMode)
-        logger.i {
+        logger.d {
             "[ApplovinSdk.ios] settings applied (verboseLoggingEnabled=${settings.verboseLoggingEnabled}, creativeDebuggerEnabledRequested=$debugMode)"
         }
         settings.termsAndPrivacyPolicyFlowSettings.apply {
@@ -58,8 +58,8 @@ actual class ApplovinSdk {
         ALSdk.shared().initializeWithConfiguration(
             initializationConfiguration = initConfig,
             completionHandler = {
-                logger.i { "[ApplovinSdk.ios] SDK initialization callback fired" }
                 onInitialized()
+                logger.i { "[ApplovinSdk.ios] SDK initialization callback" }
             }
         )
     }
