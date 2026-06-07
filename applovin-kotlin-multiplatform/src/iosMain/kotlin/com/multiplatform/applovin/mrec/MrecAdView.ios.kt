@@ -33,5 +33,8 @@ actual fun MrecAdView(
         modifier = modifier
             .fillMaxWidth()
             .height(if (adState.isTablet) 90.dp else 250.dp),
+        update = {
+            adState.nativeAdView
+        }
     )
 }

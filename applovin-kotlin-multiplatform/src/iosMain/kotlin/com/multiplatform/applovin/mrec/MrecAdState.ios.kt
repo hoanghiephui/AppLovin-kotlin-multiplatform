@@ -127,7 +127,7 @@ actual fun rememberMrecAd(
         }
     }
 
-    return remember(adUnitId, adPlacement) { MrecAdState(adView, isAdReady, isTablet) }
+    return remember(adUnitId, adPlacement, isAdReady, adView) { MrecAdState(adView, isAdReady, isTablet) }
 }
 
 // ---------------------------------------------------------------------------
