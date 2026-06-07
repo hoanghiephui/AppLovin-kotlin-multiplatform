@@ -64,6 +64,7 @@ kotlin {
             api("com.google.android.material:material:1.14.0-rc01")
             api("com.applovin.mediation:inmobi-adapter:11.3.0.0")
             //api(libs.applovin.mediation.google)
+            api("com.applovin.mediation:ironsource-adapter:9.4.3.0.0")
         }
     }
 }

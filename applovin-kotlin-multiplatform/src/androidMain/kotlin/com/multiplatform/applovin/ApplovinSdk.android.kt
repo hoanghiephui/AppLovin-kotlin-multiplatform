@@ -1,7 +1,7 @@
 package com.multiplatform.applovin
 
 import android.content.Context
-import android.net.Uri
+import androidx.core.net.toUri
 import com.applovin.sdk.AppLovinMediationProvider
 import com.applovin.sdk.AppLovinSdk
 import com.applovin.sdk.AppLovinSdkConfiguration
@@ -10,7 +10,6 @@ import com.multiplatform.applovin.ads.ApplovinAdView
 import com.multiplatform.applovin.ads.ApplovinInterstitialAd
 import com.multiplatform.applovin.ads.ApplovinRewardedAd
 import com.multiplatform.applovin.banner.AdFormat
-import androidx.core.net.toUri
 
 actual class ApplovinSdk {
 
@@ -31,6 +30,11 @@ actual class ApplovinSdk {
         showTermsAndPrivacyAlertInGdpr: Boolean
     ) {
         context ?: throw IllegalStateException("Context not set. Call setContext() first")
+        val initConfig = AppLovinSdkInitializationConfiguration.builder(sdkKey)
+            .setMediationProvider(AppLovinMediationProvider.MAX)
+            .setTestDeviceAdvertisingIds(testDeviceIds)
+            .build()
+
         AppLovinSdk.getInstance(context).apply {
             settings.apply {
                 //settings.userIdentifier = userIdentifier
@@ -46,10 +50,7 @@ actual class ApplovinSdk {
                     }
                 }
             }
-            val initConfig = AppLovinSdkInitializationConfiguration.builder(sdkKey)
-                .setMediationProvider(AppLovinMediationProvider.MAX)
-                .setTestDeviceAdvertisingIds(testDeviceIds)
-                .build()
+
             initialize(initConfig) {
                 onInitialized()
             }
