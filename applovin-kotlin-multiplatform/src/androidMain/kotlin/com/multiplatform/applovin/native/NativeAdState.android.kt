@@ -52,7 +52,7 @@ private fun applyNativeAdColors(
 ) {
     val titleColor = if (isDark) Color.WHITE else Color.BLACK
     val bodyColor  = if (isDark) "#ADADB8".toColorInt() else "#53535F".toColorInt()
-    val ctaBg      = ColorStateList.valueOf("#212DAB".toColorInt())
+    val ctaBg      = ColorStateList.valueOf("#0F7DEC".toColorInt())
     val ctaText    = Color.WHITE
 
     // post() defers until after AppLovin finishes populating sub-views on the main thread,

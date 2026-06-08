@@ -154,7 +154,7 @@ private fun buildMANativeAdView(): MANativeAdView = MANativeAdView().apply {
             // --- CTA button — below body, trailing-aligned, 44 pt tall × 120 pt wide ---
             ctaButton.topAnchor.constraintEqualToAnchor(bodyLabel.bottomAnchor, 8.0),
             ctaButton.trailingAnchor.constraintEqualToAnchor(trailingAnchor, -8.0),
-            ctaButton.widthAnchor.constraintEqualToConstant(120.0),
+            ctaButton.widthAnchor.constraintEqualToConstant(160.0),
             ctaButton.heightAnchor.constraintEqualToConstant(44.0),
             ctaButton.bottomAnchor.constraintEqualToAnchor(bottomAnchor, -8.0),
         )
