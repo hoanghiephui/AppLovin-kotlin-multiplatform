@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
+import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
@@ -34,57 +36,64 @@ actual fun MrecAdView(
 ) {
     val adView = adState.nativeAdView
     val isTablet = adState.isTablet
-    val adHeight = if (isTablet) 90.dp else 250.dp
+
+    val expectedWidth = UIScreen.mainScreen.bounds.useContents { size.width }
+    val expectedHeight = if (isTablet) 90.0 else 250.0
+    val adHeightDp = if (isTablet) 90.dp else 250.dp
 
     UIKitView(
         factory = {
-            // Calculate a non-zero initial frame based on screen width and expected height.
-            // This prevents AppLovin SDK from seeing a 0-area view during the initial
-            // attachment phase in a Lazy List.
-            val screenWidth = UIScreen.mainScreen.bounds.useContents { size.width }
-            val initialHeight = if (isTablet) 90.0 else 250.0
-            val container = UIView(frame = CGRectMake(0.0, 0.0, screenWidth, initialHeight))
+            val container = UIView(frame = CGRectMake(0.0, 0.0, expectedWidth, expectedHeight))
 
-            // Ensure adView is detached from any previous container.
             adView.removeFromSuperview()
-
-            // Configure adView to automatically follow container's size changes.
             adView.setAutoresizingMask(
                 UIViewAutoresizingFlexibleWidth or UIViewAutoresizingFlexibleHeight
             )
-
-            // Sync adView frame to the container's initial non-zero frame.
             adView.setFrame(container.bounds)
+
+            // Ép cấu hình hiển thị hiển nhiên của lớp Native
+            adView.setHidden(false)
+            adView.setAlpha(1.0)
 
             container.addSubview(adView)
             container
         },
         modifier = modifier
             .fillMaxWidth()
-            .height(adHeight),
+            .height(adHeightDp),
+        // --- ĐÂY LÀ CHÌA KHÓA CHO COMPOSE 1.11.1 ---
+        properties = UIKitInteropProperties(
+            // Chế độ Cooperative cấu hình cho các View phức tạp/có tương tác cuộn/quảng cáo
+            // Giúp đồng bộ layer hiển thị của iOS Native trực tiếp đè lên canvas của Compose mà không bị delay vẽ
+            interactionMode = UIKitInteropInteractionMode.Cooperative(),
+            isNativeAccessibilityEnabled = true
+        ),
         update = { container ->
-            // Re-parent if needed (e.g., if the container was recycled or recreated)
+            // Chống hiện tượng LazyColumn gán frame (0,0) cho container khi tái sử dụng
+            if (container.bounds.useContents { size.width } == 0.0) {
+                container.setFrame(CGRectMake(0.0, 0.0, expectedWidth, expectedHeight))
+            }
+
             if (adView.superview !== container) {
                 adView.removeFromSuperview()
-                adView.setFrame(container.bounds)
                 container.addSubview(adView)
             }
 
-            // Sync frame one more time to ensure no drift during layout passes.
-            adView.setFrame(container.bounds)
+            // Ép cứng frame cho AdView bằng kích thước thật để SDK không kích hoạt Viewability ẩn
+            adView.setFrame(CGRectMake(0.0, 0.0, expectedWidth, expectedHeight))
+            adView.setHidden(false)
+            adView.setAlpha(1.0)
 
-            // Force a layout pass on the native side to ensure the internal webview
-            // or native components of the ad are correctly rendered in the new frame.
+            // Yêu cầu iOS CoreAnimation vẽ lại ngay lập tức lớp view này
             adView.setNeedsLayout()
             adView.layoutIfNeeded()
         },
         onReset = { _ ->
-            // Detach the singleton adView when the UIKitView is hidden/recycled in a list.
-            // This prevents the adView from being stuck in a detached window hierarchy.
-            adView.removeFromSuperview()
+            // BỎ trống hoặc KHÔNG gọi removeFromSuperview() tại đây ở phiên bản 1.11.1
+            // Việc tháo rời view trong danh sách cuộn sẽ làm AppLovin mất dấu cửa sổ window và ẩn đồ họa nội bộ
         },
         onRelease = { _ ->
-            // Final detachment when the composable leaves the composition.
+            // Chỉ tháo hẳn ra khi màn hình này bị đóng hoàn toàn
             adView.removeFromSuperview()
         }
     )
