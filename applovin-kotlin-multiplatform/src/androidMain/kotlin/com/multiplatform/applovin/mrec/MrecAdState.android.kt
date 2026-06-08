@@ -6,11 +6,16 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import com.applovin.mediation.MaxAd
 import com.applovin.mediation.MaxAdFormat
 import com.applovin.mediation.MaxAdViewAdListener
+import com.applovin.mediation.MaxAdViewConfiguration
 import com.applovin.mediation.MaxError
 import com.applovin.mediation.ads.MaxAdView
+import com.applovin.sdk.AppLovinSdkUtils
 import com.multiplatform.applovin.utils.AdRetryState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -52,16 +57,35 @@ actual fun rememberMrecAd(
 ): MrecAdState {
     val isAdReady = remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     // Non-observable retry holder — does not trigger recomposition on mutation.
     val retryState = remember { AdRetryState() }
 
+    // Dynamically retrieve the screen width in dp using the container size and density.
+    val density = LocalDensity.current
+    val containerSize = LocalWindowInfo.current.containerSize
+    val screenWidthDp = with(density) { containerSize.width.toDp().value.toInt() }
+    // Set width in dp for the inline adaptive MREC.
+    val widthDp = screenWidthDp
+    val widthPx = AppLovinSdkUtils.dpToPx(context, widthDp)
+    // Set a maximum height, in dp, for the inline adaptive MREC. Otherwise, use standard MREC height of 250 dp
+    // Google recommends a height greater than 50 dp, with a minimum of 32 dp and a maximum equal to the screen height
+    // The value must also not exceed the height of the MaxAdView
+    val heightDp = 300
+    val heightPx = AppLovinSdkUtils.dpToPx(context, heightDp)
+    val config = MaxAdViewConfiguration.builder()
+        .setAdaptiveType(MaxAdViewConfiguration.AdaptiveType.INLINE)
+        .setAdaptiveWidth(widthDp) // Optional: The adaptive ad spans the width of the application window if a value is not specified
+        .setInlineMaximumHeight(heightDp) // Optional: The maximum height is the screen height if a value is not specified
+        .build()
     // Select ad format based on device type: LEADER for tablets, MREC for phones.
     val adFormat = if (isTablet) MaxAdFormat.LEADER else MaxAdFormat.MREC
 
     // Create the MaxAdView once; it lives for the lifetime of the calling composable
     // (typically the full screen), not the LazyList item lifecycle.
-    val adView = remember(adUnitId, adPlacement) {
-        MaxAdView(adUnitId, adFormat).apply {
+    // We include widthDp in the remember keys to recreate and adjust configuration on configuration changes (e.g. orientation)
+    val adView = remember(adUnitId, adPlacement, widthDp) {
+        MaxAdView(adUnitId, adFormat, config).apply {
             setListener(object : MaxAdViewAdListener {
                 override fun onAdLoaded(ad: MaxAd) {
                     retryState.reset()
@@ -100,6 +124,8 @@ actual fun rememberMrecAd(
         adView.placement = adPlacement
         adView.loadAd()
         onDispose {
+            adView.setExtraParameter("allow_pause_auto_refresh_immediately", "true")
+            adView.stopAutoRefresh()
             retryState.reset()
             adView.destroy()
         }

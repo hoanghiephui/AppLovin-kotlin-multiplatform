@@ -8,10 +8,13 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import co.touchlab.kermit.Logger
 import cocoapods.AppLovinSDK.MAAd
 import cocoapods.AppLovinSDK.MAAdFormat
 import cocoapods.AppLovinSDK.MAAdView
 import cocoapods.AppLovinSDK.MAAdViewAdDelegateProtocol
+import cocoapods.AppLovinSDK.MAAdViewAdaptiveType
+import cocoapods.AppLovinSDK.MAAdViewConfiguration
 import cocoapods.AppLovinSDK.MAError
 import com.multiplatform.applovin.utils.AdRetryState
 import kotlinx.cinterop.ExperimentalForeignApi
@@ -69,20 +72,39 @@ actual fun rememberMrecAd(
     // Non-observable retry holder — does not trigger recomposition on mutation.
     val retryState = remember { AdRetryState() }
 
+    // Build Inline Adaptive MREC config before creating the view.
+    // Set a custom width, in points, for the inline adaptive MREC. Otherwise, stretch to screen width.
+    val screenWidth = UIScreen.mainScreen.bounds.useContents { size.width }
+
+    // Set a maximum height, in points, for the inline adaptive MREC. Otherwise, use standard MREC height of 250 points.
+    val height = 300.0
+
+    val config = MAAdViewConfiguration.configurationWithBuilderBlock { builder ->
+        builder?.setAdaptiveType(MAAdViewAdaptiveType.MAAdViewAdaptiveTypeInline)
+        builder?.setAdaptiveWidth(screenWidth) // Optional: The adaptive ad spans the width of the application window if you do not set a value
+        builder?.setInlineMaximumHeight(height) // Optional: The maximum height is the screen height if you do not set a value
+    }
+
     // Create the MAAdView once; it lives for the lifetime of the calling composable.
     val adView = remember(adUnitId, adPlacement) {
-        val screenWidth = UIScreen.mainScreen.bounds.useContents { size.width }
         // Tablets use LEADER format (full-width × 90 pt); phones use MREC (300 × 250 pt).
         // Setting an explicit frame ensures ALViewabilityTimer sees a non-zero area even
         // before the view is embedded in the Compose UIKit hierarchy.
+        Logger.d { "Creating MAAdView for placement '$adPlacement' with format ${if (isTablet) "LEADER" else "MREC"} at width $screenWidth" }
         if (isTablet) {
             MAAdView(adUnitId, MAAdFormat.leader()).apply {
                 setFrame(CGRectMake(0.0, 0.0, screenWidth, 90.0))
                 backgroundColor = UIColor.clearColor
             }
         } else {
-            MAAdView(adUnitId, MAAdFormat.mrec()).apply {
-                setFrame(CGRectMake(0.0, 0.0, minOf(screenWidth, 300.0), 250.0))
+            MAAdView(adUnitId, MAAdFormat.mrec(), config).apply {
+                setFrame(
+                    CGRectMake(
+                        0.0, 0.0,
+                        screenWidth,
+                        height
+                    )
+                )
                 backgroundColor = UIColor.clearColor
             }
         }
@@ -121,13 +143,21 @@ actual fun rememberMrecAd(
         adView.loadAd()
 
         onDispose {
+            adView.setExtraParameterForKey("allow_pause_auto_refresh_immediately", "true")
+            adView.stopAutoRefresh()
             retryState.reset()
             adView.setDelegate(null)  // nullify delegate — any in-flight auto-refresh callbacks become no-ops
             adView.removeFromSuperview()
         }
     }
 
-    return remember(adUnitId, adPlacement, isAdReady, adView) { MrecAdState(adView, isAdReady, isTablet) }
+    return remember(adUnitId, adPlacement, ) {
+        MrecAdState(
+            adView,
+            isAdReady,
+            isTablet
+        )
+    }
 }
 
 // ---------------------------------------------------------------------------
