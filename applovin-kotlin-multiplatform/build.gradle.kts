@@ -10,7 +10,10 @@ version = "1.0.4"
 
 kotlin {
     jvmToolchain(21)
-    compilerOptions { freeCompilerArgs.add("-Xexpect-actual-classes") }
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+        freeCompilerArgs.add("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
+    }
     android {
         namespace = "com.aditya.gupta99.applovin"
         compileSdk = libs.versions.android.compileSdk.get().toInt()

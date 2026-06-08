@@ -1,8 +1,8 @@
 package com.multiplatform.applovin.native
 
+import androidx.annotation.IdRes
 import androidx.annotation.LayoutRes
 import androidx.annotation.MainThread
-import androidx.annotation.IdRes
 
 /**
  * Compile-time resource IDs required by MAX NativeAd binder and ad view styling.
@@ -39,6 +39,19 @@ private object NativeAdResourceRegistry {
 
 /**
  * Configures compile-time resource IDs used by Android NativeAd rendering.
+ * configureNativeAdResourceIds(
+ *             NativeAdResourceIds(
+ *                 layoutId = R.layout.max_native_ad_view,
+ *                 titleTextViewId = R.id.title_text_view,
+ *                 bodyTextViewId = R.id.body_text_view,
+ *                 advertiserTextViewId = R.id.advertiser_text_view,
+ *                 iconImageViewId = R.id.icon_image_view,
+ *                 mediaContentViewGroupId = R.id.media_view_container,
+ *                 optionsContentViewGroupId = R.id.options_view,
+ *                 starRatingContentViewGroupId = R.id.star_rating_view,
+ *                 callToActionButtonId = R.id.cta_button,
+ *             )
+ *         )
  */
 @MainThread
 fun configureNativeAdResourceIds(resourceIds: NativeAdResourceIds) {

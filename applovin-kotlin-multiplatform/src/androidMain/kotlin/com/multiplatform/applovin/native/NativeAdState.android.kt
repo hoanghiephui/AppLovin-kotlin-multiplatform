@@ -62,8 +62,8 @@ private fun applyNativeAdColors(
         adView.findViewById<TextView>(ids.advertiserTextViewId)?.setTextColor(bodyColor)
         adView.findViewById<TextView>(ids.bodyTextViewId)?.setTextColor(bodyColor)
         adView.findViewById<MaterialButton>(ids.callToActionButtonId)?.let { btn ->
-            ViewCompat.setBackgroundTintList(btn, ctaBg)
-            btn.setTextColor(ctaText)
+            //ViewCompat.setBackgroundTintList(btn, ctaBg)
+            //btn.setTextColor(ctaText)
         }
     }
 }
@@ -140,6 +140,9 @@ actual fun rememberNativeAd(
     onAdRevenuePaid: () -> Unit,
     onAdRetrying: (attempt: Int, delayMs: Long) -> Unit,
 ): NativeAdState {
+    if (adUnitId.isBlank()) {
+        throw IllegalArgumentException("adUnitId must be a non-blank string")
+    }
     val context = LocalContext.current
     val nativeAdResourceIds = remember { requireNativeAdResourceIds() }
     // isDark is provided by the caller (e.g. TwitchTheme.isDark) so in-app theme overrides
