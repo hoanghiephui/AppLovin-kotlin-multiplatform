@@ -32,9 +32,24 @@ import kotlin.time.Duration.Companion.milliseconds
 actual class MrecAdState(
     internal val nativeAdView: MaxAdView,
     private val isAdReadyState: MutableState<Boolean>,
+    private val hasFailedState: MutableState<Boolean>,
     actual val isTablet: Boolean = false,
+    private val onRefresh: () -> Unit,
+    private val onStartLoad: () -> Unit,
 ) {
     actual val isAdReady: Boolean get() = isAdReadyState.value
+
+    /** `true` when all retry attempts are exhausted and no ad could be loaded. */
+    actual val hasFailed: Boolean get() = hasFailedState.value
+
+    /** Cancels any pending retry and fires a fresh ad load request. */
+    actual fun refresh() = onRefresh()
+
+    /**
+     * Triggers the initial ad load for slots created with `autoLoad = false`.
+     * No-op if loading has already started (guarded by [onStartLoad]'s internal flag).
+     */
+    actual fun startLoad() = onStartLoad()
 }
 
 /**
@@ -52,62 +67,58 @@ actual fun rememberMrecAd(
     adUnitId: String,
     isTablet: Boolean,
     adPlacement: String,
+    autoLoad: Boolean,
     onAdLoaded: () -> Unit,
     onAdLoadFailed: (error: String) -> Unit,
 ): MrecAdState {
     val isAdReady = remember { mutableStateOf(false) }
+    val hasFailed = remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     // Non-observable retry holder — does not trigger recomposition on mutation.
     val retryState = remember { AdRetryState() }
-
-    // Dynamically retrieve the screen width in dp using the container size and density.
-    val density = LocalDensity.current
-    val containerSize = LocalWindowInfo.current.containerSize
-    val screenWidthDp = with(density) { containerSize.width.toDp().value.toInt() }
-    // Set width in dp for the inline adaptive MREC.
-    val widthDp = screenWidthDp
-    val widthPx = AppLovinSdkUtils.dpToPx(context, widthDp)
-    // Set a maximum height, in dp, for the inline adaptive MREC. Otherwise, use standard MREC height of 250 dp
-    // Google recommends a height greater than 50 dp, with a minimum of 32 dp and a maximum equal to the screen height
-    // The value must also not exceed the height of the MaxAdView
-    val heightDp = 300
-    val heightPx = AppLovinSdkUtils.dpToPx(context, heightDp)
-    val config = MaxAdViewConfiguration.builder()
-        .setAdaptiveType(MaxAdViewConfiguration.AdaptiveType.INLINE)
-        .setAdaptiveWidth(widthDp) // Optional: The adaptive ad spans the width of the application window if a value is not specified
-        .setInlineMaximumHeight(heightDp) // Optional: The maximum height is the screen height if a value is not specified
-        .build()
-    // Select ad format based on device type: LEADER for tablets, MREC for phones.
-    val adFormat = if (isTablet) MaxAdFormat.LEADER else MaxAdFormat.MREC
-
+    
+    // ... (rest of the code same as before, updated to use hasFailed)
     // Create the MaxAdView once; it lives for the lifetime of the calling composable
     // (typically the full screen), not the LazyList item lifecycle.
     // We include widthDp in the remember keys to recreate and adjust configuration on configuration changes (e.g. orientation)
+    
+    // ... (logic for widthDp, density etc)
+    val density = LocalDensity.current
+    val containerSize = LocalWindowInfo.current.containerSize
+    val screenWidthDp = with(density) { containerSize.width.toDp().value.toInt() }
+    val widthDp = screenWidthDp
+    val config = MaxAdViewConfiguration.builder()
+        .setAdaptiveType(MaxAdViewConfiguration.AdaptiveType.INLINE)
+        .setAdaptiveWidth(widthDp)
+        .setInlineMaximumHeight(300)
+        .build()
+    val adFormat = if (isTablet) MaxAdFormat.LEADER else MaxAdFormat.MREC
+
     val adView = remember(adUnitId, adPlacement, widthDp) {
         MaxAdView(adUnitId, adFormat, config).apply {
             setListener(object : MaxAdViewAdListener {
                 override fun onAdLoaded(ad: MaxAd) {
                     retryState.reset()
                     isAdReady.value = true
+                    hasFailed.value = false
                     onAdLoaded()
                 }
 
                 override fun onAdLoadFailed(adUnitId: String, error: MaxError) {
                     if (retryState.canRetry) {
-                        // Exponential back-off: retry 1 → 2s, retry 2 → 4s, retry 3 → 8s.
                         val delayMs = retryState.incrementAndGetDelayMs()
                         retryState.setJob(scope.launch {
                             delay(delayMs.milliseconds)
                             loadAd()
                         })
                     } else {
-                        // All retries exhausted — surface the failure to the caller.
+                        hasFailed.value = true
                         onAdLoadFailed(error.message)
                     }
                     isAdReady.value = false
                 }
-
+                // ... other overrides
                 override fun onAdClicked(ad: MaxAd) {}
                 override fun onAdDisplayed(ad: MaxAd) {}
                 override fun onAdDisplayFailed(ad: MaxAd, error: MaxError) {}
@@ -118,11 +129,10 @@ actual fun rememberMrecAd(
         }
     }
 
-    // loadAd() once; destroy on disposal. Cancel pending retries to prevent
-    // a post-disposal loadAd() call on the destroyed MaxAdView.
+    val hasLoadStarted = remember { mutableStateOf(autoLoad) }
     DisposableEffect(adUnitId, adPlacement) {
         adView.placement = adPlacement
-        adView.loadAd()
+        if (autoLoad) adView.loadAd()
         onDispose {
             adView.setExtraParameter("allow_pause_auto_refresh_immediately", "true")
             adView.stopAutoRefresh()
@@ -131,5 +141,25 @@ actual fun rememberMrecAd(
         }
     }
 
-    return remember(adUnitId, adPlacement) { MrecAdState(adView, isAdReady, isTablet) }
+    return remember(adUnitId, adPlacement) {
+        MrecAdState(
+            nativeAdView = adView,
+            isAdReadyState = isAdReady,
+            hasFailedState = hasFailed,
+            isTablet = isTablet,
+            onRefresh = {
+                retryState.reset()
+                isAdReady.value = false
+                hasFailed.value = false
+                hasLoadStarted.value = true
+                adView.loadAd()
+            },
+            onStartLoad = {
+                if (!hasLoadStarted.value) {
+                    hasLoadStarted.value = true
+                    adView.loadAd()
+                }
+            }
+        )
+    }
 }

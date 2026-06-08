@@ -38,9 +38,24 @@ import kotlin.time.Duration.Companion.milliseconds
 actual class MrecAdState(
     internal val nativeAdView: MAAdView,
     private val isAdReadyState: MutableState<Boolean>,
+    private val hasFailedState: MutableState<Boolean>,
     actual val isTablet: Boolean = false,
+    private val onRefresh: () -> Unit,
+    private val onStartLoad: () -> Unit,
 ) {
     actual val isAdReady: Boolean get() = isAdReadyState.value
+
+    /** `true` when all retry attempts are exhausted and no ad could be loaded. */
+    actual val hasFailed: Boolean get() = hasFailedState.value
+
+    /** Cancels any pending retry and fires a fresh ad load request. */
+    actual fun refresh() = onRefresh()
+
+    /**
+     * Triggers the initial ad load for slots created with `autoLoad = false`.
+     * No-op if loading has already started (guarded by [onStartLoad]'s internal flag).
+     */
+    actual fun startLoad() = onStartLoad()
 }
 
 /**
@@ -64,10 +79,12 @@ actual fun rememberMrecAd(
     adUnitId: String,
     isTablet: Boolean,
     adPlacement: String,
+    autoLoad: Boolean,
     onAdLoaded: () -> Unit,
     onAdLoadFailed: (error: String) -> Unit,
 ): MrecAdState {
     val isAdReady = remember { mutableStateOf(false) }
+    val hasFailed = remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     // Non-observable retry holder — does not trigger recomposition on mutation.
     val retryState = remember { AdRetryState() }
@@ -118,6 +135,7 @@ actual fun rememberMrecAd(
             onAdLoaded = {
                 retryState.reset()
                 isAdReady.value = true
+                hasFailed.value = false
                 onAdLoaded()
             },
             onAdLoadFailed = { error ->
@@ -130,6 +148,7 @@ actual fun rememberMrecAd(
                     })
                 } else {
                     // All retries exhausted — surface the failure to the caller.
+                    hasFailed.value = true
                     onAdLoadFailed(error)
                 }
                 isAdReady.value = false
@@ -137,10 +156,14 @@ actual fun rememberMrecAd(
         )
     }
 
+    // Fire the first load only when autoLoad is requested. When autoLoad = false the
+    // caller is responsible for invoking startLoad() at the right time.
+    // A hasLoadStarted flag prevents startLoad() from firing a second time.
+    val hasLoadStarted = remember { mutableStateOf(autoLoad) }
     DisposableEffect(adUnitId, adPlacement) {
         adView.setDelegate(delegate)
         adView.setPlacement(adPlacement)
-        adView.loadAd()
+        if (autoLoad) adView.loadAd()
 
         onDispose {
             adView.setExtraParameterForKey("allow_pause_auto_refresh_immediately", "true")
@@ -151,11 +174,26 @@ actual fun rememberMrecAd(
         }
     }
 
-    return remember(adUnitId, adPlacement, ) {
+    return remember(adUnitId, adPlacement) {
         MrecAdState(
-            adView,
-            isAdReady,
-            isTablet
+            nativeAdView = adView,
+            isAdReadyState = isAdReady,
+            hasFailedState = hasFailed,
+            isTablet = isTablet,
+            onRefresh = {
+                retryState.reset()
+                isAdReady.value = false
+                hasFailed.value = false
+                hasLoadStarted.value = true
+                adView.loadAd()
+            },
+            onStartLoad = {
+                // Guard: only start once; subsequent calls are no-ops.
+                if (!hasLoadStarted.value) {
+                    hasLoadStarted.value = true
+                    adView.loadAd()
+                }
+            }
         )
     }
 }

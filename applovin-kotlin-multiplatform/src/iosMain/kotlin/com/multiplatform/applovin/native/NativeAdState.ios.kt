@@ -27,6 +27,7 @@ import platform.UIKit.UIImageView
 import platform.UIKit.UILabel
 import platform.UIKit.UIView
 import platform.darwin.NSObject
+import kotlin.time.Duration.Companion.milliseconds
 
 // Integer view tags matching those used in the official AppLovin iOS sample (XIB-based).
 // The MANativeAdViewBinder uses these tags to locate sub-views inside MANativeAdView
@@ -289,7 +290,7 @@ actual fun rememberNativeAd(
                     val delayMs = retryState.incrementAndGetDelayMs()
                     onAdRetrying(retryState.count, delayMs)
                     retryState.setJob(scope.launch {
-                        delay(delayMs)
+                        delay(delayMs.milliseconds)
                         loader.loadAdIntoAdView(nativeAdView)
                     })
                 } else {
@@ -318,7 +319,7 @@ actual fun rememberNativeAd(
 
     // Key on adUnitId + adPlacement so onRefresh always captures the current loader
     // (loader is recreated when adPlacement changes but nativeAdView is not).
-    return remember(adUnitId, adPlacement) {
+    return remember(adUnitId, adPlacement, isAdReady) {
         NativeAdState(
             nativeAdView = nativeAdView,
             isAdReadyState = isAdReady,

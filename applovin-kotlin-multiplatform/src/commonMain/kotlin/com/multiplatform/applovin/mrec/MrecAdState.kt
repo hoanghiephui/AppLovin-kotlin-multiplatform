@@ -18,6 +18,20 @@ expect class MrecAdState {
     val isAdReady: Boolean
     /** `true` when the underlying ad format is LEADER (tablet); `false` for MREC (phone). */
     val isTablet: Boolean
+
+    /** `true` when all retry attempts have been exhausted. */
+    val hasFailed: Boolean
+
+    /** Manually triggers a fresh ad load, resetting the retry counter. */
+    fun refresh()
+
+    /**
+     * Triggers the initial ad load for slots created with `autoLoad = false`.
+     *
+     * This is a no-op if the load has already been started (either because
+     * `autoLoad = true` or because [startLoad] was already called once).
+     */
+    fun startLoad()
 }
 
 /**
@@ -45,6 +59,7 @@ expect fun rememberMrecAd(
     adUnitId: String,
     isTablet: Boolean = false,
     adPlacement: String,
+    autoLoad: Boolean = true,
     onAdLoaded: () -> Unit = {},
     onAdLoadFailed: (error: String) -> Unit = {},
 ): MrecAdState

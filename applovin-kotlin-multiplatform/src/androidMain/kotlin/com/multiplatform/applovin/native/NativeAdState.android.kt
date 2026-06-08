@@ -25,6 +25,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.core.graphics.toColorInt
 import com.applovin.sdk.R
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Schedules theme-aware color application for all text views and the CTA [MaterialButton]
@@ -217,7 +218,7 @@ actual fun rememberNativeAd(
                         val delayMs = retryState.incrementAndGetDelayMs()
                         onAdRetrying(retryState.count, delayMs)
                         retryState.setJob(scope.launch {
-                            delay(delayMs)
+                            delay(delayMs.milliseconds)
                             loadAd(nativeAdView)
                         })
                     } else {
@@ -255,7 +256,7 @@ actual fun rememberNativeAd(
         }
     }
 
-    return remember(adUnitId, adPlacement) {
+    return remember(adUnitId, adPlacement, isAdReady) {
         NativeAdState(
             nativeAdView = nativeAdView,
             isAdReadyState = isAdReady,
