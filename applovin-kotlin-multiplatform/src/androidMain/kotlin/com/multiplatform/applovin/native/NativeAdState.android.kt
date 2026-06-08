@@ -52,7 +52,7 @@ private fun applyNativeAdColors(
 ) {
     val titleColor = if (isDark) Color.WHITE else Color.BLACK
     val bodyColor  = if (isDark) "#ADADB8".toColorInt() else "#53535F".toColorInt()
-    val ctaBg      = ColorStateList.valueOf("#9146FF".toColorInt()) // Twitch purple
+    val ctaBg      = ColorStateList.valueOf("#212DAB".toColorInt())
     val ctaText    = Color.WHITE
 
     // post() defers until after AppLovin finishes populating sub-views on the main thread,
@@ -62,8 +62,8 @@ private fun applyNativeAdColors(
         adView.findViewById<TextView>(ids.advertiserTextViewId)?.setTextColor(bodyColor)
         adView.findViewById<TextView>(ids.bodyTextViewId)?.setTextColor(bodyColor)
         adView.findViewById<MaterialButton>(ids.callToActionButtonId)?.let { btn ->
-            //ViewCompat.setBackgroundTintList(btn, ctaBg)
-            //btn.setTextColor(ctaText)
+            ViewCompat.setBackgroundTintList(btn, ctaBg)
+            btn.setTextColor(ctaText)
         }
     }
 }
