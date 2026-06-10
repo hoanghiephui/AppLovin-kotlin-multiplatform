@@ -74,7 +74,6 @@ actual fun rememberMrecAd(
     val isAdReady = remember { mutableStateOf(false) }
     val hasFailed = remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     // Non-observable retry holder — does not trigger recomposition on mutation.
     val retryState = remember { AdRetryState() }
     
