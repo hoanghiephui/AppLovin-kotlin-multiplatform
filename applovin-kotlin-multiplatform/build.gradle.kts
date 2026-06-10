@@ -58,6 +58,10 @@ kotlin {
 
         }
 
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
+
         androidMain.dependencies {
             implementation(libs.lifecycle.process)
             api(libs.applovin.sdk)

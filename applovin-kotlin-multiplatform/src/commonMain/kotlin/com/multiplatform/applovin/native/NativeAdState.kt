@@ -3,7 +3,7 @@ package com.multiplatform.applovin.native
 import androidx.compose.runtime.Composable
 
 /**
- * Holds the preloaded state for a MAX Native ad.
+ * Holds the state for a MAX Native ad and its native view owner.
  *
  * Create an instance via [rememberNativeAd] at the *screen* level (outside any
  * [LazyColumn]/[LazyVerticalGrid] or conditional branch) so the native view survives
@@ -21,9 +21,9 @@ expect class NativeAdState {
     /**
      * `true` when all retry attempts have been exhausted and no ad is available.
      *
-     * Callers that chain slot loading (e.g. [rememberNativeAdPlacer]) observe this
-     * flag to advance to the next slot even when the current one permanently fails,
-     * preventing the sequential load chain from stalling.
+     * Legacy callers that chain slot loading observe this flag to advance to the next
+     * slot even when the current one permanently fails, preventing the load chain from
+     * stalling.
      */
     val hasFailed: Boolean
 
@@ -41,8 +41,8 @@ expect class NativeAdState {
      *
      * This is a no-op if the load has already been started (either because
      * `autoLoad = true` or because [startLoad] was already called once).
-     * Used by [rememberNativeAdPlacer] to implement the same sequential
-     * one-at-a-time loading strategy as [MaxAdPlacer]'s internal preloader.
+     * Used by viewport-gated native ad placers to defer the first request until a slot
+     * is close to the visible list window.
      */
     fun startLoad()
 }
@@ -82,9 +82,9 @@ expect fun rememberNativeAd(
     isDark: Boolean,
     /**
      * When `true` (the default) the ad load starts immediately inside [DisposableEffect].
-     * Pass `false` to defer loading until [NativeAdState.startLoad] is called — used by
-     * [rememberNativeAdPlacer] to implement sequential one-at-a-time loading that mirrors
-     * the strategy used internally by AppLovin's [MaxAdPlacer].
+     * Pass `false` to defer loading until [NativeAdState.startLoad] is called. This is
+     * used by viewport-gated native ad placers so a request starts only when the ad slot
+     * is close to the visible list window.
      */
     autoLoad: Boolean = true,
     onAdLoaded: () -> Unit = {},

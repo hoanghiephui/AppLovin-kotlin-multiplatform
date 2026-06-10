@@ -8,17 +8,45 @@ import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.first
 
 /**
- * Number of native ad slots preloaded by [rememberNativeAdPlacer].
+ * Number of native ad slots prepared by [rememberNativeAdPlacer].
  *
  * Four slots cover the most common feed layouts without excessive memory usage:
  * - A vertical single-column feed typically shows ≤ 2 ads simultaneously.
  * - A 2-column grid ([LazyVerticalGrid]) shows at most 1 full-width ad at a time.
- * Four preloaded creatives ensure ads are ready before the user scrolls to them.
+ * Four native view owners are enough for viewport-gated load or legacy sequential preload.
  */
 private const val POOL_SIZE = 4
 
 /**
- * Manages a fixed pool of preloaded native ads and calculates their insertion positions
+ * Returns pool slots whose ad positions are inside the current viewport plus look-ahead.
+ *
+ * This is intentionally pure so screens can share one loading policy while
+ * [NativeAdPlacerState] remains responsible for calling the native-backed ad states.
+ */
+internal fun nativeAdSlotsNearViewport(
+    adIndices: IntArray,
+    poolSize: Int,
+    firstVisibleAdjustedIndex: Int,
+    lastVisibleAdjustedIndex: Int,
+    lookAheadItems: Int,
+): List<Int> {
+    if (poolSize <= 0 || adIndices.isEmpty()) return emptyList()
+
+    val windowStart = minOf(firstVisibleAdjustedIndex, lastVisibleAdjustedIndex) - lookAheadItems
+    val windowEnd = maxOf(firstVisibleAdjustedIndex, lastVisibleAdjustedIndex) + lookAheadItems
+    val slots = LinkedHashSet<Int>()
+
+    adIndices.forEachIndexed { slot, adjustedIndex ->
+        if (adjustedIndex in windowStart..windowEnd) {
+            slots += slot % poolSize
+        }
+    }
+
+    return slots.toList()
+}
+
+/**
+ * Manages a fixed pool of native ad states and calculates their insertion positions
  * in a feed ([LazyColumn] / [LazyVerticalGrid]).
  *
  * ### Position algorithm
@@ -222,11 +250,38 @@ class NativeAdPlacerState(
     /**
      * Calls [NativeAdState.refresh] on every slot in the pool.
      *
-     * Invoke this when the host screen performs a pull-to-refresh so all preloaded ads
+     * Invoke this when the host screen performs a pull-to-refresh so loaded/requested ads
      * are refreshed alongside the content. Each slot resets its failure state and
-     * re-initiates the load sequence.
+     * re-initiates its load.
      */
     fun refreshAll() = adPool.forEach { it.refresh() }
+
+    /**
+     * Starts loading ad slots whose virtual positions are close to the visible viewport.
+     *
+     * Call this from the host list's scroll observer. The underlying [NativeAdState.startLoad]
+     * is idempotent, so calling this repeatedly during scroll is safe.
+     *
+     * @param firstVisibleAdjustedIndex First visible index in the combined content+ad stream.
+     * @param lastVisibleAdjustedIndex Last visible index in the combined content+ad stream.
+     * @param lookAheadItems Number of combined-stream items before/after the visible range that
+     *   should trigger an ad load before the slot is actually composed.
+     */
+    fun loadAdsNearViewport(
+        firstVisibleAdjustedIndex: Int,
+        lastVisibleAdjustedIndex: Int,
+        lookAheadItems: Int = 2,
+    ) {
+        nativeAdSlotsNearViewport(
+            adIndices = adIndices,
+            poolSize = adPool.size,
+            firstVisibleAdjustedIndex = firstVisibleAdjustedIndex,
+            lastVisibleAdjustedIndex = lastVisibleAdjustedIndex,
+            lookAheadItems = lookAheadItems,
+        ).forEach { slot ->
+            adPool.getOrNull(slot)?.startLoad()
+        }
+    }
 
     /**
      * Number of ad slots that are currently visible in the feed while preserving slot order.
@@ -281,12 +336,12 @@ class NativeAdPlacerState(
      * Like [adjustedSize] but counts only pool slots whose creative is currently ready.
      *
      * When no ads are ready the returned value equals [contentCount] (pure content stream).
-     * As each sequential slot finishes loading the value grows by 1, inserting an ad
+     * As each viewport-requested slot finishes loading the value grows by 1, inserting an ad
      * position into the combined stream at the pre-calculated index.
      *
      * **Approximation note**: the validity check `adIndices[slot] − slot < contentCount`
-     * uses the original slot ordinal. This is exact for sequential loading (slots settle
-     * 0→1→2→3) and is a safe approximation (off-by-1 near the content boundary) for
+     * uses the original slot ordinal. This is exact when slots settle
+     * 0→1→2→3 and is a safe approximation (off-by-1 near the content boundary) for
      * the unlikely case where an early slot fails and a later slot is ready first.
      */
     fun readyAdjustedSize(contentCount: Int): Int {
@@ -317,22 +372,22 @@ class NativeAdPlacerState(
 }
 
 /**
- * Creates and remembers a [NativeAdPlacerState] that pre-loads a pool of [POOL_SIZE]
+ * Creates and remembers a [NativeAdPlacerState] that prepares a pool of [POOL_SIZE]
  * native ads at the **screen level** (outside any `LazyColumn`/`LazyVerticalGrid`).
  *
- * ### Why screen-level preloading matters for revenue
- * - Ads are fetched before the user scrolls to them → zero latency when the slot becomes
- *   visible → higher impression rate.
- * - The same [NativeAdState] (and its underlying native view) is reused on scroll — no
- *   redundant network requests or view recreation.
+ * ### Why screen-level pool preparation matters for revenue
+ * - Native ad views are allocated once at screen level so they survive list item recycling.
+ * - Actual ad loads are deferred until the host list calls
+ *   [NativeAdPlacerState.loadAdsNearViewport], avoiding creatives that load far away from
+ *   the viewport and never receive an impression opportunity.
  * - Lifecycle is tied to the screen, not to individual list items; AppLovin's viewability
  *   timer counts only when the view is on-screen.
  *
  * ### Compose rules
  * [rememberNativeAd] is called exactly [POOL_SIZE] times in fixed order — compliant with
- * the Compose composable call-order invariant. All [POOL_SIZE] slots start loading
- * immediately; slots beyond [maxAdCount] still hold a loader but their callbacks are
- * silenced.
+ * the Compose composable call-order invariant. Legacy callers keep [autoLoad] as `true`
+ * and use the sequential load chain. Migrated callers pass [autoLoad] as `false`, observe
+ * their list viewport, and call [NativeAdPlacerState.loadAdsNearViewport].
  *
  * ### iOS note
  * On iOS each slot gets its own [MANativeAdLoader] and [MANativeAdView], matching the
@@ -353,6 +408,9 @@ class NativeAdPlacerState(
  *   [POOL_SIZE] unique creatives are reused across multiple positions in the feed.
  *   Example: `maxAdCount = 100` with `fixedPositions=[2]`, `repeatingInterval=5` produces
  *   7 ad positions ([2,7,12,17,22,27,32]) for a 30-item feed, cycling 4 creatives.
+ * @param autoLoad Whether to start the legacy sequential load chain immediately. Pass
+ *   `false` for viewport-gated integrations and call
+ *   [NativeAdPlacerState.loadAdsNearViewport] from the host list scroll observer.
  * @param onAdLoaded Invoked on the main thread when a slot's ad finishes loading; receives
  *   the 0-based slot index.
  * @param onAdLoadFailed Invoked on the main thread when a slot exhausts all retries; receives
@@ -366,6 +424,7 @@ fun rememberNativeAdPlacer(
     fixedPositions: List<Int> = listOf(3),
     repeatingInterval: Int = 5,
     maxAdCount: Int = 10,
+    autoLoad: Boolean = true,
     onAdLoaded: (slot: Int) -> Unit = {},
     onAdLoadFailed: (slot: Int, error: String) -> Unit = { _, _ -> },
 ): NativeAdPlacerState {
@@ -375,18 +434,14 @@ fun rememberNativeAdPlacer(
     // All POOL_SIZE composable calls MUST appear unconditionally and in fixed order to
     // satisfy Compose's call-order invariant.
     //
-    // Sequential loading strategy — mirrors MaxAdPlacer's internal z2 preloaded:
-    //   slot 0 starts immediately (autoLoad = true).
-    //   slots 1-3 start only after the previous slot settles (loaded OR permanently failed).
-    //
-    // This avoids firing N simultaneous requests to AppLovin servers, matching the SDK's
-    // one-at-a-time queue behavior. The LaunchedEffect below observes each slot's
-    // isAdReady / hasFailed state and calls startLoad() on the next slot in sequence.
+    // Slots are always prepared at screen level. Legacy callers keep autoLoad=true and use
+    // the sequential chain below; migrated callers pass autoLoad=false and drive loading
+    // through NativeAdPlacerState.loadAdsNearViewport().
     val slot0 = rememberNativeAd(
         adUnitId = adUnitId,
         adPlacement = adPlacement,
         isDark = isDark,
-        autoLoad = true,
+        autoLoad = autoLoad,
         onAdLoaded = { if (0 < effectiveMax) onAdLoaded(0) },
         onAdLoadFailed = { e -> if (0 < effectiveMax) onAdLoadFailed(0, e) },
     )
@@ -415,11 +470,11 @@ fun rememberNativeAdPlacer(
         onAdLoadFailed = { e -> if (3 < effectiveMax) onAdLoadFailed(3, e) },
     )
 
-    // Sequential load chain: each slot starts only after the previous one settles.
-    // "Settled" = isAdReady (success) OR hasFailed (all retries exhausted).
-    // This matches MaxAdPlacer's z2 preloaded which uses a single MaxNativeAdLoader
-    // and enqueues the next loadAd() call inside onNativeAdLoaded.
-    LaunchedEffect(adUnitId, adPlacement) {
+    // Backward-compatible sequential load chain for screens that have not migrated to
+    // viewport-gated loading yet. New integrations should pass autoLoad=false and call
+    // NativeAdPlacerState.loadAdsNearViewport() from their list scroll observer.
+    LaunchedEffect(adUnitId, adPlacement, autoLoad) {
+        if (!autoLoad) return@LaunchedEffect
         if (effectiveMax > 1) {
             snapshotFlow { slot0.isAdReady || slot0.hasFailed }.first { it }
             slot1.startLoad()
