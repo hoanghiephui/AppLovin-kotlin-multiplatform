@@ -28,6 +28,7 @@ actual fun NativeAdView(
     adState: NativeAdState,
     modifier: Modifier,
 ) {
+    val nativeAdView = adState.nativeAdView ?: return
     // Guard: collapse to 0×0 if called before isAdReady to avoid layout reservation.
     val effectiveMod = if (adState.isAdReady) {
         modifier.fillMaxWidth().wrapContentHeight()
@@ -36,7 +37,7 @@ actual fun NativeAdView(
     }
 
     UIKitView(
-        factory = { adState.nativeAdView },
+        factory = { nativeAdView },
         modifier = effectiveMod,
     )
 }

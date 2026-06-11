@@ -93,3 +93,12 @@ expect fun rememberNativeAd(
     onAdRevenuePaid: () -> Unit = {},
     onAdRetrying: (attempt: Int, delayMs: Long) -> Unit = { _, _ -> },
 ): NativeAdState
+
+/**
+ * Creates a no-op native ad state without allocating platform AppLovin objects.
+ *
+ * Used by [rememberNativeAdPlacer] to preserve Compose call order while avoiding unused
+ * native view/loader creation for slots above the caller's effective pool size.
+ */
+@Composable
+internal expect fun rememberDisabledNativeAd(): NativeAdState

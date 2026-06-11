@@ -33,7 +33,7 @@ actual fun NativeAdView(
     adState: NativeAdState,
     modifier: Modifier,
 ) {
-    val adView = adState.nativeAdView
+    val adView = adState.nativeAdView ?: return
     AndroidView(
         factory = { ctx ->
             FrameLayout(ctx).also { container ->

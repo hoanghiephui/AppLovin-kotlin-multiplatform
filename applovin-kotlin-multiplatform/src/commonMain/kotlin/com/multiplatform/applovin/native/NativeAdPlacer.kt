@@ -432,7 +432,8 @@ fun rememberNativeAdPlacer(
     val effectiveMax = minOf(maxAdCount, POOL_SIZE)
 
     // All POOL_SIZE composable calls MUST appear unconditionally and in fixed order to
-    // satisfy Compose's call-order invariant.
+    // satisfy Compose's call-order invariant. Slots above effectiveMax use no-op states
+    // so startup-critical callers can avoid unused native AppLovin view/loader creation.
     //
     // Slots are always prepared at screen level. Legacy callers keep autoLoad=true and use
     // the sequential chain below; migrated callers pass autoLoad=false and drive loading
@@ -445,30 +446,42 @@ fun rememberNativeAdPlacer(
         onAdLoaded = { if (0 < effectiveMax) onAdLoaded(0) },
         onAdLoadFailed = { e -> if (0 < effectiveMax) onAdLoadFailed(0, e) },
     )
-    val slot1 = rememberNativeAd(
-        adUnitId = adUnitId,
-        adPlacement = adPlacement,
-        isDark = isDark,
-        autoLoad = false,
-        onAdLoaded = { if (1 < effectiveMax) onAdLoaded(1) },
-        onAdLoadFailed = { e -> if (1 < effectiveMax) onAdLoadFailed(1, e) },
-    )
-    val slot2 = rememberNativeAd(
-        adUnitId = adUnitId,
-        adPlacement = adPlacement,
-        isDark = isDark,
-        autoLoad = false,
-        onAdLoaded = { if (2 < effectiveMax) onAdLoaded(2) },
-        onAdLoadFailed = { e -> if (2 < effectiveMax) onAdLoadFailed(2, e) },
-    )
-    val slot3 = rememberNativeAd(
-        adUnitId = adUnitId,
-        adPlacement = adPlacement,
-        isDark = isDark,
-        autoLoad = false,
-        onAdLoaded = { if (3 < effectiveMax) onAdLoaded(3) },
-        onAdLoadFailed = { e -> if (3 < effectiveMax) onAdLoadFailed(3, e) },
-    )
+    val slot1 = if (effectiveMax > 1) {
+        rememberNativeAd(
+            adUnitId = adUnitId,
+            adPlacement = adPlacement,
+            isDark = isDark,
+            autoLoad = false,
+            onAdLoaded = { onAdLoaded(1) },
+            onAdLoadFailed = { e -> onAdLoadFailed(1, e) },
+        )
+    } else {
+        rememberDisabledNativeAd()
+    }
+    val slot2 = if (effectiveMax > 2) {
+        rememberNativeAd(
+            adUnitId = adUnitId,
+            adPlacement = adPlacement,
+            isDark = isDark,
+            autoLoad = false,
+            onAdLoaded = { onAdLoaded(2) },
+            onAdLoadFailed = { e -> onAdLoadFailed(2, e) },
+        )
+    } else {
+        rememberDisabledNativeAd()
+    }
+    val slot3 = if (effectiveMax > 3) {
+        rememberNativeAd(
+            adUnitId = adUnitId,
+            adPlacement = adPlacement,
+            isDark = isDark,
+            autoLoad = false,
+            onAdLoaded = { onAdLoaded(3) },
+            onAdLoadFailed = { e -> onAdLoadFailed(3, e) },
+        )
+    } else {
+        rememberDisabledNativeAd()
+    }
 
     // Backward-compatible sequential load chain for screens that have not migrated to
     // viewport-gated loading yet. New integrations should pass autoLoad=false and call
@@ -492,7 +505,7 @@ fun rememberNativeAdPlacer(
     // Build the pool list once. Invalidates only when adUnitId or adPlacement changes,
     // which also invalidates each rememberNativeAd's internal remember blocks — so the
     // pool always references the current NativeAdState instances.
-    val pool = remember(adUnitId, adPlacement) {
+    val pool = remember(adUnitId, adPlacement, effectiveMax) {
         listOf(slot0, slot1, slot2, slot3).take(effectiveMax)
     }
 
@@ -508,7 +521,7 @@ fun rememberNativeAdPlacer(
     // derivedStateOf BEFORE the lazy items block (see readyAdPositions in each screen).
     // This prevents the key-lambda race condition that previously caused:
     //   IllegalArgumentException: Key dir_X was used multiple times
-    return remember(adUnitId, adPlacement, fixedPositions, repeatingInterval, maxAdCount) {
+    return remember(adUnitId, adPlacement, fixedPositions, repeatingInterval, maxAdCount, pool) {
         NativeAdPlacerState(
             adPool = pool,
             fixedPositions = fixedPositions,

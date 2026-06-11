@@ -80,7 +80,7 @@ private fun applyNativeAdColors(
  *   all platform-specific reload logic (retry reset + [MaxNativeAdLoader.loadAd]).
  */
 actual class NativeAdState(
-    internal val nativeAdView: MaxNativeAdView,
+    internal val nativeAdView: MaxNativeAdView?,
     private val isAdReadyState: MutableState<Boolean>,
     private val hasFailedState: MutableState<Boolean>,
     private val onRefresh: () -> Unit,
@@ -99,6 +99,21 @@ actual class NativeAdState(
      * No-op if loading has already started (guarded by [onStartLoad]'s internal flag).
      */
     actual fun startLoad() = onStartLoad()
+}
+
+@Composable
+internal actual fun rememberDisabledNativeAd(): NativeAdState {
+    val isAdReady = remember { mutableStateOf(false) }
+    val hasFailed = remember { mutableStateOf(true) }
+    return remember {
+        NativeAdState(
+            nativeAdView = null,
+            isAdReadyState = isAdReady,
+            hasFailedState = hasFailed,
+            onRefresh = {},
+            onStartLoad = {},
+        )
+    }
 }
 
 /**
