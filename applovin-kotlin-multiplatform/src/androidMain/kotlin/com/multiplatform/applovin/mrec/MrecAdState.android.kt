@@ -86,7 +86,8 @@ actual fun rememberMrecAd(
     val density = LocalDensity.current
     val containerSize = LocalWindowInfo.current.containerSize
     val screenWidthDp = with(density) { containerSize.width.toDp().value.toInt() }
-    val widthDp = screenWidthDp
+    // Ensure width is at least 300dp for MREC to avoid "smaller than required adaptive size" errors.
+    val widthDp = maxOf(300, screenWidthDp)
     val config = MaxAdViewConfiguration.builder()
         .setAdaptiveType(MaxAdViewConfiguration.AdaptiveType.INLINE)
         .setAdaptiveWidth(widthDp)

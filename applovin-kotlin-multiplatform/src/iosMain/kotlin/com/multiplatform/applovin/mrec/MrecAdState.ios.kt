@@ -92,14 +92,16 @@ actual fun rememberMrecAd(
     // Build Inline Adaptive MREC config before creating the view.
     // Set a custom width, in points, for the inline adaptive MREC. Otherwise, stretch to screen width.
     val screenWidth = UIScreen.mainScreen.bounds.useContents { size.width }
+    // Ensure width is at least 300 points for MREC to avoid "smaller than required adaptive size" errors.
+    val adaptiveWidth = maxOf(300.0, screenWidth)
 
     // Set a maximum height, in points, for the inline adaptive MREC. Otherwise, use standard MREC height of 250 points.
     val height = 300.0
 
     val config = MAAdViewConfiguration.configurationWithBuilderBlock { builder ->
         builder?.setAdaptiveType(MAAdViewAdaptiveType.MAAdViewAdaptiveTypeInline)
-        builder?.setAdaptiveWidth(screenWidth) // Optional: The adaptive ad spans the width of the application window if you do not set a value
-        builder?.setInlineMaximumHeight(height) // Optional: The maximum height is the screen height if you do not set a value
+        builder?.setAdaptiveWidth(adaptiveWidth)
+        builder?.setInlineMaximumHeight(height)
     }
 
     // Create the MAAdView once; it lives for the lifetime of the calling composable.
@@ -110,7 +112,7 @@ actual fun rememberMrecAd(
         Logger.d { "Creating MAAdView for placement '$adPlacement' with format ${if (isTablet) "LEADER" else "MREC"} at width $screenWidth" }
         if (isTablet) {
             MAAdView(adUnitId, MAAdFormat.leader()).apply {
-                setFrame(CGRectMake(0.0, 0.0, screenWidth, 90.0))
+                setFrame(CGRectMake(0.0, 0.0, adaptiveWidth, 90.0))
                 backgroundColor = UIColor.clearColor
             }
         } else {
@@ -118,7 +120,7 @@ actual fun rememberMrecAd(
                 setFrame(
                     CGRectMake(
                         0.0, 0.0,
-                        screenWidth,
+                        adaptiveWidth,
                         height
                     )
                 )

@@ -3,8 +3,10 @@ package com.multiplatform.applovin.mrec
 import android.widget.FrameLayout
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 
 /**
@@ -30,6 +32,7 @@ actual fun MrecAdView(
     modifier: Modifier,
 ) {
     val adView = adState.nativeAdView
+    val minWidthDp = 300.dp
 
     AndroidView(
         factory = { ctx ->
@@ -78,7 +81,9 @@ actual fun MrecAdView(
             // "The specified child already has a parent" IllegalStateException.
             container.removeAllViews()
         },
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .widthIn(min = minWidthDp),
     )
 }
 

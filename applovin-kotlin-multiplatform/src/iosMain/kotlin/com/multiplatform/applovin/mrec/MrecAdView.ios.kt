@@ -4,6 +4,7 @@ package com.multiplatform.applovin.mrec
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -29,6 +30,7 @@ actual fun MrecAdView(
 ) {
     val isTablet = adState.isTablet
     val adHeightDp = if (isTablet) 90.dp else 250.dp
+    val minWidthDp = 300.dp
 
     UIKitView(
         factory = {
@@ -36,6 +38,7 @@ actual fun MrecAdView(
         },
         modifier = modifier
             .fillMaxWidth()
+            .widthIn(min = minWidthDp)
             .height(adHeightDp)
     )
 }
