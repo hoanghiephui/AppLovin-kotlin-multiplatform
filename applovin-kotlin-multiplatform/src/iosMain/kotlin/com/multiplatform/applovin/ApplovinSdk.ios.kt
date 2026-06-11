@@ -55,7 +55,7 @@ actual class ApplovinSdk {
             initializationConfiguration = initConfig,
             completionHandler = {
                 onInitialized()
-                logger.i { "[ApplovinSdk.ios] SDK initialization callback" }
+                logger.d { "[ApplovinSdk.ios] SDK initialization callback" }
                 /*if (debugMode) {
                     ALSdk.shared().showMediationDebugger()
                     ALSdk.shared().showCreativeDebugger()
