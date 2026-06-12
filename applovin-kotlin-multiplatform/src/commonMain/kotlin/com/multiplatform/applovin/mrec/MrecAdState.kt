@@ -1,9 +1,11 @@
 package com.multiplatform.applovin.mrec
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 
 /**
- * Holds the pre-loaded state for a MAX MREC / LEADER ad.
+ * Holds the preloaded state for a MAX MREC / LEADER ad.
  *
  * Create an instance via [rememberMrecAd] at the *screen* level (outside any
  * [LazyColumn] or conditional branch) so the native view survives scrolling.
@@ -14,6 +16,7 @@ import androidx.compose.runtime.Composable
  *   [MrecAdView] uses this to apply the correct dimensions (full-width × 90 dp instead of
  *   300 × 250 dp).
  */
+@Immutable
 expect class MrecAdState {
     val isAdReady: Boolean
     /** `true` when the underlying ad format is LEADER (tablet); `false` for MREC (phone). */

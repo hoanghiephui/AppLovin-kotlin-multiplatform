@@ -2,11 +2,11 @@ package com.multiplatform.applovin.mrec
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import com.applovin.mediation.MaxAd
@@ -15,7 +15,6 @@ import com.applovin.mediation.MaxAdViewAdListener
 import com.applovin.mediation.MaxAdViewConfiguration
 import com.applovin.mediation.MaxError
 import com.applovin.mediation.ads.MaxAdView
-import com.applovin.sdk.AppLovinSdkUtils
 import com.multiplatform.applovin.utils.AdRetryState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -29,6 +28,7 @@ import kotlin.time.Duration.Companion.milliseconds
  * @param isAdReadyState mutable backing state for [isAdReady].
  * @param isTablet `true` when the ad was created with [MaxAdFormat.LEADER] (tablet layout).
  */
+@Immutable
 actual class MrecAdState(
     internal val nativeAdView: MaxAdView,
     private val isAdReadyState: MutableState<Boolean>,
@@ -76,12 +76,12 @@ actual fun rememberMrecAd(
     val scope = rememberCoroutineScope()
     // Non-observable retry holder — does not trigger recomposition on mutation.
     val retryState = remember { AdRetryState() }
-    
+
     // ... (rest of the code same as before, updated to use hasFailed)
     // Create the MaxAdView once; it lives for the lifetime of the calling composable
     // (typically the full screen), not the LazyList item lifecycle.
     // We include widthDp in the remember keys to recreate and adjust configuration on configuration changes (e.g. orientation)
-    
+
     // ... (logic for widthDp, density etc)
     val density = LocalDensity.current
     val containerSize = LocalWindowInfo.current.containerSize
@@ -118,6 +118,7 @@ actual fun rememberMrecAd(
                     }
                     isAdReady.value = false
                 }
+
                 // ... other overrides
                 override fun onAdClicked(ad: MaxAd) {}
                 override fun onAdDisplayed(ad: MaxAd) {}

@@ -4,6 +4,7 @@ package com.multiplatform.applovin.mrec
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +36,7 @@ import kotlin.time.Duration.Companion.milliseconds
  * @param isAdReadyState mutable backing state for [isAdReady].
  * @param isTablet `true` when the ad was created with [MAAdFormat.leader] (tablet layout).
  */
+@Immutable
 actual class MrecAdState(
     internal val nativeAdView: MAAdView,
     private val isAdReadyState: MutableState<Boolean>,
