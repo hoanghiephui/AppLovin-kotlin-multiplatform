@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -23,6 +24,7 @@ import platform.UIKit.NSLayoutConstraint
 import platform.UIKit.UIButton
 import platform.UIKit.UIButtonTypeSystem
 import platform.UIKit.UIColor
+import platform.UIKit.UIControlStateNormal
 import platform.UIKit.UIFont
 import platform.UIKit.UIImageView
 import platform.UIKit.UILabel
@@ -63,6 +65,56 @@ private const val TAG_STAR_RATING: Long = 1008
 private fun buildMANativeAdView(layout: NativeAdLayout): MANativeAdView = when (layout) {
     NativeAdLayout.Medium -> buildMediumMANativeAdView()
     NativeAdLayout.Small -> buildSmallMANativeAdView()
+}
+
+private fun nativeAdSurfaceColor(isDark: Boolean): UIColor =
+    if (isDark) {
+        UIColor.blackColor
+    } else {
+        UIColor.whiteColor
+    }
+
+private fun nativeAdPrimaryTextColor(isDark: Boolean): UIColor =
+    if (isDark) {
+        UIColor.whiteColor
+    } else {
+        UIColor.blackColor
+    }
+
+private fun nativeAdSecondaryTextColor(isDark: Boolean): UIColor =
+    if (isDark) {
+        UIColor(red = 0.68, green = 0.68, blue = 0.72, alpha = 1.0)
+    } else {
+        UIColor(red = 0.33, green = 0.33, blue = 0.37, alpha = 1.0)
+    }
+
+/**
+ * Applies app-theme colours after AppLovin has populated the native template.
+ *
+ * The iOS SDK may update labels during `loadAdIntoAdView`, so this is invoked both when the
+ * theme changes and after `didLoadNativeAd` to keep text and background in sync.
+ */
+private fun applyNativeAdColors(
+    adView: MANativeAdView,
+    isDark: Boolean,
+) {
+    val surfaceColor = nativeAdSurfaceColor(isDark)
+    val secondaryTextColor = nativeAdSecondaryTextColor(isDark)
+
+    adView.backgroundColor = surfaceColor
+    adView.opaque = true
+    adView.subviews.forEach { subview ->
+        (subview as? UIView)?.backgroundColor = UIColor.clearColor
+    }
+    (adView.viewWithTag(TAG_TITLE) as? UILabel)?.textColor = nativeAdPrimaryTextColor(isDark)
+    (adView.viewWithTag(TAG_ADVERTISER) as? UILabel)?.textColor = secondaryTextColor
+    (adView.viewWithTag(TAG_BODY) as? UILabel)?.textColor = secondaryTextColor
+    (adView.viewWithTag(TAG_CTA) as? UIButton)?.let { button ->
+        button.backgroundColor = UIColor(red = 0.06, green = 0.49, blue = 0.93, alpha = 1.0)
+        button.setTitleColor(UIColor.whiteColor, forState = UIControlStateNormal)
+        button.layer.cornerRadius = 6.0
+        button.clipsToBounds = true
+    }
 }
 
 private fun buildMediumMANativeAdView(): MANativeAdView = MANativeAdView().apply {
@@ -174,8 +226,8 @@ private fun buildMediumMANativeAdView(): MANativeAdView = MANativeAdView().apply
  * with icon/advertiser underneath, and title/body/rating/CTA in the right content column.
  */
 private fun buildSmallMANativeAdView(): MANativeAdView = MANativeAdView().apply {
-    backgroundColor = UIColor.whiteColor
-    opaque = true
+    backgroundColor = UIColor.clearColor
+    opaque = false
 
     val contentGuide = UIView().apply {
         translatesAutoresizingMaskIntoConstraints = false
@@ -373,6 +425,11 @@ actual fun rememberNativeAd(
     // Build MANativeAdView once — sub-views are tagged and positioned via Auto Layout so
     // MANativeAdViewBinder can populate each slot when the ad loads.
     val nativeAdView = remember(adUnitId, layout) { buildMANativeAdView(layout) }
+    val isDarkState = remember { mutableStateOf(isDark) }
+    SideEffect {
+        isDarkState.value = isDark
+        applyNativeAdColors(nativeAdView, isDark)
+    }
 
     // Configure the binder: maps integer tags to native ad asset slots.
     val binder = remember(adUnitId, layout) {
@@ -418,6 +475,7 @@ actual fun rememberNativeAd(
                 loadedAdHolder.ad?.let { loader.destroyAd(it) }
                 loadedAdHolder.ad = ad
                 retryState.reset()
+                applyNativeAdColors(nativeAdView, isDarkState.value)
                 isAdReady.value = true
                 onAdLoaded()
             },
