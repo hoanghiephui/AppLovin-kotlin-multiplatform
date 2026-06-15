@@ -4,6 +4,7 @@ package com.multiplatform.applovin.banner
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +35,7 @@ import platform.darwin.NSObject
  * @param isAdReadyState      mutable backing state for [isAdReady].
  * @param adaptiveHeightDpState mutable backing state for [adaptiveHeightDp].
  */
+@Immutable
 actual class BannerAdState(
     internal val nativeAdView: MAAdView,
     private val isAdReadyState: MutableState<Boolean>,

@@ -1,6 +1,19 @@
 package com.multiplatform.applovin.native
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+
+/**
+ * Visual template used by MAX native ads.
+ *
+ * [Medium] is the existing media-forward template. [Small] is a compact 4:1
+ * horizontal template intended for feed/grid rows where the full media asset would
+ * consume too much vertical space.
+ */
+enum class NativeAdLayout {
+    Medium,
+    Small,
+}
 
 /**
  * Holds the state for a MAX Native ad and its native view owner.
@@ -14,6 +27,7 @@ import androidx.compose.runtime.Composable
  *   Only insert the list item when this is `true` to avoid reserving empty layout space
  *   while the ad is pending or when there is no fill.
  */
+@Immutable
 expect class NativeAdState {
     /** `true` once the native ad creative has loaded and is ready to display. */
     val isAdReady: Boolean
@@ -65,6 +79,7 @@ expect class NativeAdState {
  * @param isDark Whether the app is currently displaying in dark mode. Pass the app-level dark
  *   theme flag (e.g. `TwitchTheme.isDark`) rather than relying on the system setting so that
  *   in-app theme overrides (Light / Dark / Auto) are respected correctly.
+ * @param layout Visual native-ad template to inflate/build for this ad state.
  * @param onAdLoaded Invoked on the main thread when the native ad creative is ready.
  * @param onAdLoadFailed Invoked on the main thread when the ad fails to load after all
  *   retry attempts; receives an error description string.
@@ -80,6 +95,7 @@ expect fun rememberNativeAd(
     adUnitId: String,
     adPlacement: String,
     isDark: Boolean,
+    layout: NativeAdLayout = NativeAdLayout.Medium,
     /**
      * When `true` (the default) the ad load starts immediately inside [DisposableEffect].
      * Pass `false` to defer loading until [NativeAdState.startLoad] is called. This is

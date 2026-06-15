@@ -13,6 +13,7 @@ import androidx.annotation.MainThread
  */
 data class NativeAdResourceIds(
     @LayoutRes val layoutId: Int,
+    @LayoutRes val smallLayoutId: Int = layoutId,
     @IdRes val titleTextViewId: Int,
     @IdRes val bodyTextViewId: Int,
     @IdRes val advertiserTextViewId: Int,
@@ -22,6 +23,12 @@ data class NativeAdResourceIds(
     @IdRes val starRatingContentViewGroupId: Int,
     @IdRes val callToActionButtonId: Int,
 )
+
+@LayoutRes
+internal fun NativeAdResourceIds.layoutIdFor(layout: NativeAdLayout): Int = when (layout) {
+    NativeAdLayout.Medium -> layoutId
+    NativeAdLayout.Small -> smallLayoutId
+}
 
 private object NativeAdResourceRegistry {
     @Volatile
@@ -42,6 +49,7 @@ private object NativeAdResourceRegistry {
  * configureNativeAdResourceIds(
  *             NativeAdResourceIds(
  *                 layoutId = R.layout.max_native_ad_view,
+ *                 smallLayoutId = R.layout.max_native_add_small,
  *                 titleTextViewId = R.id.title_text_view,
  *                 bodyTextViewId = R.id.body_text_view,
  *                 advertiserTextViewId = R.id.advertiser_text_view,

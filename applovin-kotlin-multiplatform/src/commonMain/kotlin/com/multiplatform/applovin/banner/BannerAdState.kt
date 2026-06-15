@@ -1,6 +1,7 @@
 package com.multiplatform.applovin.banner
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 
 /**
  * Holds the preloaded state for a MAX Anchored Adaptive Banner ad.
@@ -16,6 +17,7 @@ import androidx.compose.runtime.Composable
  * @property isAdReady `true` once the ad creative has loaded and is ready to display.
  * @property adaptiveHeightDp Height of the banner in dp; updated when the ad loads.
  */
+@Immutable
 expect class BannerAdState {
     val isAdReady: Boolean
     val adaptiveHeightDp: Float

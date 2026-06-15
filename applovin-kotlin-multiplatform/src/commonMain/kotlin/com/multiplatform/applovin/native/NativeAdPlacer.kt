@@ -399,6 +399,7 @@ class NativeAdPlacerState(
  * @param isDark Whether the app is currently displaying in dark mode. Pass the app-level dark
  *   theme flag (e.g. `TwitchTheme.isDark`) rather than relying on the system setting so that
  *   in-app theme overrides (Light / Dark / Auto) are respected correctly.
+ * @param layout Visual native-ad template to use for every slot in this placer.
  * @param fixedPositions Indices in the combined (content + ad) stream where ads appear first.
  *   Defaults to `[3]` — first ad after 3 content items.
  * @param repeatingInterval After the last fixed position, insert an ad every N combined-stream
@@ -421,6 +422,7 @@ fun rememberNativeAdPlacer(
     adUnitId: String,
     adPlacement: String,
     isDark: Boolean,
+    layout: NativeAdLayout = NativeAdLayout.Medium,
     fixedPositions: List<Int> = listOf(3),
     repeatingInterval: Int = 5,
     maxAdCount: Int = 10,
@@ -442,6 +444,7 @@ fun rememberNativeAdPlacer(
         adUnitId = adUnitId,
         adPlacement = adPlacement,
         isDark = isDark,
+        layout = layout,
         autoLoad = autoLoad,
         onAdLoaded = { if (0 < effectiveMax) onAdLoaded(0) },
         onAdLoadFailed = { e -> if (0 < effectiveMax) onAdLoadFailed(0, e) },
@@ -451,6 +454,7 @@ fun rememberNativeAdPlacer(
             adUnitId = adUnitId,
             adPlacement = adPlacement,
             isDark = isDark,
+            layout = layout,
             autoLoad = false,
             onAdLoaded = { onAdLoaded(1) },
             onAdLoadFailed = { e -> onAdLoadFailed(1, e) },
@@ -463,6 +467,7 @@ fun rememberNativeAdPlacer(
             adUnitId = adUnitId,
             adPlacement = adPlacement,
             isDark = isDark,
+            layout = layout,
             autoLoad = false,
             onAdLoaded = { onAdLoaded(2) },
             onAdLoadFailed = { e -> onAdLoadFailed(2, e) },
@@ -475,6 +480,7 @@ fun rememberNativeAdPlacer(
             adUnitId = adUnitId,
             adPlacement = adPlacement,
             isDark = isDark,
+            layout = layout,
             autoLoad = false,
             onAdLoaded = { onAdLoaded(3) },
             onAdLoadFailed = { e -> onAdLoadFailed(3, e) },
@@ -486,7 +492,7 @@ fun rememberNativeAdPlacer(
     // Backward-compatible sequential load chain for screens that have not migrated to
     // viewport-gated loading yet. New integrations should pass autoLoad=false and call
     // NativeAdPlacerState.loadAdsNearViewport() from their list scroll observer.
-    LaunchedEffect(adUnitId, adPlacement, autoLoad) {
+    LaunchedEffect(adUnitId, adPlacement, layout, autoLoad) {
         if (!autoLoad) return@LaunchedEffect
         if (effectiveMax > 1) {
             snapshotFlow { slot0.isAdReady || slot0.hasFailed }.first { it }
@@ -505,7 +511,7 @@ fun rememberNativeAdPlacer(
     // Build the pool list once. Invalidates only when adUnitId or adPlacement changes,
     // which also invalidates each rememberNativeAd's internal remember blocks — so the
     // pool always references the current NativeAdState instances.
-    val pool = remember(adUnitId, adPlacement, effectiveMax) {
+    val pool = remember(adUnitId, adPlacement, layout, effectiveMax) {
         listOf(slot0, slot1, slot2, slot3).take(effectiveMax)
     }
 
@@ -521,7 +527,7 @@ fun rememberNativeAdPlacer(
     // derivedStateOf BEFORE the lazy items block (see readyAdPositions in each screen).
     // This prevents the key-lambda race condition that previously caused:
     //   IllegalArgumentException: Key dir_X was used multiple times
-    return remember(adUnitId, adPlacement, fixedPositions, repeatingInterval, maxAdCount, pool) {
+    return remember(adUnitId, adPlacement, layout, fixedPositions, repeatingInterval, maxAdCount, pool) {
         NativeAdPlacerState(
             adPool = pool,
             fixedPositions = fixedPositions,

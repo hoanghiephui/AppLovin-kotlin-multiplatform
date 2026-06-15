@@ -4,6 +4,7 @@ package com.multiplatform.applovin.native
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,7 +60,12 @@ private const val TAG_STAR_RATING: Long = 1008
  * Star-rating ([TAG_STAR_RATING]) is registered in the binder so AppLovin can populate it
  * when present, but is excluded from the constraint graph — its intrinsic size drives layout.
  */
-private fun buildMANativeAdView(): MANativeAdView = MANativeAdView().apply {
+private fun buildMANativeAdView(layout: NativeAdLayout): MANativeAdView = when (layout) {
+    NativeAdLayout.Medium -> buildMediumMANativeAdView()
+    NativeAdLayout.Small -> buildSmallMANativeAdView()
+}
+
+private fun buildMediumMANativeAdView(): MANativeAdView = MANativeAdView().apply {
     // Icon — square 48×48 pt, top-left.
     val iconView = UIImageView().apply {
         tag = TAG_ICON
@@ -162,6 +168,120 @@ private fun buildMANativeAdView(): MANativeAdView = MANativeAdView().apply {
 }
 
 /**
+ * Constructs the compact 4:1 native ad template used by [NativeAdLayout.Small].
+ *
+ * It mirrors the Android `max_native_add_small.xml` structure: a left media tile
+ * with icon/advertiser underneath, and title/body/rating/CTA in the right content column.
+ */
+private fun buildSmallMANativeAdView(): MANativeAdView = MANativeAdView().apply {
+    backgroundColor = UIColor.whiteColor
+    opaque = true
+
+    val contentGuide = UIView().apply {
+        translatesAutoresizingMaskIntoConstraints = false
+    }
+    val iconView = UIImageView().apply {
+        tag = TAG_ICON
+        translatesAutoresizingMaskIntoConstraints = false
+        clipsToBounds = true
+    }
+    val optionsView = UIView().apply {
+        tag = TAG_OPTIONS
+        translatesAutoresizingMaskIntoConstraints = false
+    }
+    val titleLabel = UILabel().apply {
+        tag = TAG_TITLE
+        translatesAutoresizingMaskIntoConstraints = false
+        font = UIFont.boldSystemFontOfSize(15.0)
+        numberOfLines = 1
+    }
+    val advertiserLabel = UILabel().apply {
+        tag = TAG_ADVERTISER
+        translatesAutoresizingMaskIntoConstraints = false
+        font = UIFont.systemFontOfSize(12.0)
+        numberOfLines = 1
+    }
+    val bodyLabel = UILabel().apply {
+        tag = TAG_BODY
+        translatesAutoresizingMaskIntoConstraints = false
+        font = UIFont.systemFontOfSize(12.0)
+        numberOfLines = 2
+    }
+    val mediaView = UIView().apply {
+        tag = TAG_MEDIA
+        translatesAutoresizingMaskIntoConstraints = false
+        clipsToBounds = true
+    }
+    val starRatingView = UIView().apply {
+        tag = TAG_STAR_RATING
+        translatesAutoresizingMaskIntoConstraints = false
+    }
+    val ctaButton = UIButton.buttonWithType(UIButtonTypeSystem).apply {
+        tag = TAG_CTA
+        translatesAutoresizingMaskIntoConstraints = false
+    }
+
+    addSubview(contentGuide)
+    addSubview(iconView)
+    addSubview(optionsView)
+    addSubview(titleLabel)
+    addSubview(advertiserLabel)
+    addSubview(bodyLabel)
+    addSubview(mediaView)
+    addSubview(starRatingView)
+    addSubview(ctaButton)
+
+    NSLayoutConstraint.activateConstraints(
+        listOf(
+            heightAnchor.constraintGreaterThanOrEqualToConstant(132.0),
+
+            iconView.topAnchor.constraintEqualToAnchor(mediaView.bottomAnchor, 2.0),
+            iconView.leadingAnchor.constraintEqualToAnchor(leadingAnchor, 10.0),
+            iconView.widthAnchor.constraintEqualToConstant(24.0),
+            iconView.heightAnchor.constraintEqualToConstant(24.0),
+
+            mediaView.topAnchor.constraintEqualToAnchor(contentGuide.topAnchor),
+            mediaView.leadingAnchor.constraintEqualToAnchor(leadingAnchor, 10.0),
+            mediaView.widthAnchor.constraintEqualToConstant(128.0),
+            mediaView.heightAnchor.constraintEqualToConstant(72.0),
+
+            contentGuide.topAnchor.constraintEqualToAnchor(topAnchor, 10.0),
+            contentGuide.leadingAnchor.constraintEqualToAnchor(mediaView.trailingAnchor, 4.0),
+            contentGuide.trailingAnchor.constraintEqualToAnchor(trailingAnchor, -10.0),
+            contentGuide.bottomAnchor.constraintEqualToAnchor(bottomAnchor, -10.0),
+
+            advertiserLabel.centerYAnchor.constraintEqualToAnchor(iconView.centerYAnchor),
+            advertiserLabel.leadingAnchor.constraintEqualToAnchor(iconView.trailingAnchor, 6.0),
+            advertiserLabel.trailingAnchor.constraintLessThanOrEqualToAnchor(contentGuide.leadingAnchor),
+
+            optionsView.topAnchor.constraintEqualToAnchor(contentGuide.topAnchor),
+            optionsView.trailingAnchor.constraintEqualToAnchor(contentGuide.trailingAnchor),
+            optionsView.widthAnchor.constraintEqualToConstant(25.0),
+            optionsView.heightAnchor.constraintEqualToConstant(25.0),
+
+            titleLabel.topAnchor.constraintEqualToAnchor(contentGuide.topAnchor),
+            titleLabel.leadingAnchor.constraintEqualToAnchor(contentGuide.leadingAnchor),
+            titleLabel.trailingAnchor.constraintEqualToAnchor(optionsView.leadingAnchor, -6.0),
+
+            bodyLabel.topAnchor.constraintEqualToAnchor(titleLabel.bottomAnchor, 4.0),
+            bodyLabel.leadingAnchor.constraintEqualToAnchor(titleLabel.leadingAnchor),
+            bodyLabel.trailingAnchor.constraintEqualToAnchor(contentGuide.trailingAnchor),
+
+            starRatingView.topAnchor.constraintEqualToAnchor(bodyLabel.bottomAnchor),
+            starRatingView.leadingAnchor.constraintEqualToAnchor(titleLabel.leadingAnchor),
+            starRatingView.widthAnchor.constraintGreaterThanOrEqualToConstant(0.0),
+            starRatingView.heightAnchor.constraintGreaterThanOrEqualToConstant(0.0),
+
+            ctaButton.topAnchor.constraintEqualToAnchor(starRatingView.bottomAnchor, 6.0),
+            ctaButton.leadingAnchor.constraintEqualToAnchor(titleLabel.leadingAnchor),
+            ctaButton.trailingAnchor.constraintEqualToAnchor(contentGuide.trailingAnchor),
+            ctaButton.bottomAnchor.constraintEqualToAnchor(contentGuide.bottomAnchor),
+            ctaButton.heightAnchor.constraintEqualToConstant(32.0),
+        )
+    )
+}
+
+/**
  * iOS implementation of [NativeAdState].
  *
  * @param nativeAdView the programmatically-constructed [MANativeAdView]; `internal` so
@@ -173,6 +293,7 @@ private fun buildMANativeAdView(): MANativeAdView = MANativeAdView().apply {
  *   all platform-specific reload logic (retry reset + [MANativeAdLoader.loadAdIntoAdView]).
  * @param onStartLoad lambda that fires the initial load; guarded internally against double-calls.
  */
+@Immutable
 actual class NativeAdState(
     internal val nativeAdView: MANativeAdView?,
     private val isAdReadyState: MutableState<Boolean>,
@@ -233,6 +354,7 @@ actual fun rememberNativeAd(
     adUnitId: String,
     adPlacement: String,
     isDark: Boolean,
+    layout: NativeAdLayout,
     autoLoad: Boolean,
     onAdLoaded: () -> Unit,
     onAdLoadFailed: (error: String) -> Unit,
@@ -250,10 +372,10 @@ actual fun rememberNativeAd(
 
     // Build MANativeAdView once — sub-views are tagged and positioned via Auto Layout so
     // MANativeAdViewBinder can populate each slot when the ad loads.
-    val nativeAdView = remember(adUnitId) { buildMANativeAdView() }
+    val nativeAdView = remember(adUnitId, layout) { buildMANativeAdView(layout) }
 
     // Configure the binder: maps integer tags to native ad asset slots.
-    val binder = remember(adUnitId) {
+    val binder = remember(adUnitId, layout) {
         MANativeAdViewBinder { builder ->
             builder?.titleLabelTag = TAG_TITLE
             builder?.advertiserLabelTag = TAG_ADVERTISER

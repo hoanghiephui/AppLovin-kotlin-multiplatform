@@ -6,6 +6,7 @@ import android.view.ContextThemeWrapper
 import android.widget.TextView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
@@ -79,6 +80,7 @@ private fun applyNativeAdColors(
  * @param onRefresh lambda captured from [rememberNativeAd]'s composition scope; encapsulates
  *   all platform-specific reload logic (retry reset + [MaxNativeAdLoader.loadAd]).
  */
+@Immutable
 actual class NativeAdState(
     internal val nativeAdView: MaxNativeAdView?,
     private val isAdReadyState: MutableState<Boolean>,
@@ -148,6 +150,7 @@ actual fun rememberNativeAd(
     adUnitId: String,
     adPlacement: String,
     isDark: Boolean,
+    layout: NativeAdLayout,
     autoLoad: Boolean,
     onAdLoaded: () -> Unit,
     onAdLoadFailed: (error: String) -> Unit,
@@ -179,8 +182,8 @@ actual fun rememberNativeAd(
     val loadedAdHolder = remember { object { var ad: MaxAd? = null } }
 
     // Binder IDs are compile-time IDs provided by the host app at startup.
-    val binder = remember(adUnitId) {
-        MaxNativeAdViewBinder.Builder(nativeAdResourceIds.layoutId)
+    val binder = remember(adUnitId, layout) {
+        MaxNativeAdViewBinder.Builder(nativeAdResourceIds.layoutIdFor(layout))
             .setTitleTextViewId(nativeAdResourceIds.titleTextViewId)
             .setBodyTextViewId(nativeAdResourceIds.bodyTextViewId)
             .setAdvertiserTextViewId(nativeAdResourceIds.advertiserTextViewId)
@@ -202,7 +205,7 @@ actual fun rememberNativeAd(
     // ContextThemeWrapper.resources inherits the correct night/day configuration from the
     // original context, so dark-mode switching works automatically.
     //
-    val nativeAdView = remember(adUnitId, adPlacement) {
+    val nativeAdView = remember(adUnitId, adPlacement, layout) {
         // Wrap with Material3 DayNight theme so ?attr/color* and MaterialButton styles
         // resolve correctly. Dark mode is NOT read from this context — isDarkState (above)
         // is used instead, because themedContext is cached and would return a stale uiMode
@@ -274,7 +277,7 @@ actual fun rememberNativeAd(
         }
     }
 
-    return remember(adUnitId, adPlacement, isAdReady) {
+    return remember(adUnitId, adPlacement, layout, isAdReady) {
         NativeAdState(
             nativeAdView = nativeAdView,
             isAdReadyState = isAdReady,
