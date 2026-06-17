@@ -14,7 +14,7 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
         freeCompilerArgs.add("-XXLanguage:+PropertyParamAnnotationDefaultTargetMode")
     }
-    android {
+    configure<com.android.build.api.dsl.KotlinMultiplatformAndroidLibraryTarget> {
         namespace = "com.aditya.gupta99.applovin"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
