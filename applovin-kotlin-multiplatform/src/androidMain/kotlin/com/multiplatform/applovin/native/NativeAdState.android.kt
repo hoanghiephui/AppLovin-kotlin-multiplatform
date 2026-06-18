@@ -26,7 +26,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.core.graphics.toColorInt
 import com.applovin.sdk.R
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
+
+private const val CTA_CORNER_RADIUS_DP = 16f
 
 /**
  * Schedules theme-aware color application for all text views and the CTA [MaterialButton]
@@ -65,6 +68,7 @@ private fun applyNativeAdColors(
         adView.findViewById<MaterialButton>(ids.callToActionButtonId)?.let { btn ->
             ViewCompat.setBackgroundTintList(btn, ctaBg)
             btn.setTextColor(ctaText)
+            btn.cornerRadius = (CTA_CORNER_RADIUS_DP * btn.resources.displayMetrics.density).roundToInt()
         }
     }
 }
