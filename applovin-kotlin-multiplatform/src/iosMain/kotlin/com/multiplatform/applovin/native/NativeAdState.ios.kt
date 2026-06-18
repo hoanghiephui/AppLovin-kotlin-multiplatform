@@ -43,7 +43,7 @@ private const val TAG_OPTIONS: Long = 1005  // required — privacy / AdChoices 
 private const val TAG_MEDIA: Long = 1006
 private const val TAG_CTA: Long = 1007
 private const val TAG_STAR_RATING: Long = 1008
-private const val CTA_CORNER_RADIUS: Double = 16.0
+private const val CTA_CORNER_RADIUS: Double = 12.0
 
 /**
  * Constructs a [MANativeAdView] with all sub-views tagged and positioned via programmatic
@@ -224,7 +224,7 @@ private fun buildMediumMANativeAdView(): MANativeAdView = MANativeAdView().apply
             ctaButton.topAnchor.constraintEqualToAnchor(bodyLabel.bottomAnchor, 8.0),
             ctaButton.trailingAnchor.constraintEqualToAnchor(trailingAnchor, -8.0),
             ctaButton.widthAnchor.constraintEqualToConstant(160.0),
-            ctaButton.heightAnchor.constraintEqualToConstant(35.0),
+            ctaButton.heightAnchor.constraintEqualToConstant(32.0),
             ctaButton.bottomAnchor.constraintEqualToAnchor(bottomAnchor, -8.0),
         )
     )

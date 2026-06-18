@@ -29,7 +29,7 @@ import com.applovin.sdk.R
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
-private const val CTA_CORNER_RADIUS_DP = 16f
+private const val CTA_CORNER_RADIUS_DP = 12f
 
 /**
  * Schedules theme-aware color application for all text views and the CTA [MaterialButton]
