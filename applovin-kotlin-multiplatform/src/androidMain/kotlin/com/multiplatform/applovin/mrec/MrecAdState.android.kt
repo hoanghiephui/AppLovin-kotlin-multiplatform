@@ -1,5 +1,7 @@
 package com.multiplatform.applovin.mrec
 
+import android.content.Context
+import android.webkit.WebSettings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
@@ -7,6 +9,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import com.applovin.mediation.MaxAd
@@ -16,8 +19,11 @@ import com.applovin.mediation.MaxAdViewConfiguration
 import com.applovin.mediation.MaxError
 import com.applovin.mediation.ads.MaxAdView
 import com.multiplatform.applovin.utils.AdRetryState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -74,6 +80,7 @@ actual fun rememberMrecAd(
     val isAdReady = remember { mutableStateOf(false) }
     val hasFailed = remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val appContext = LocalContext.current.applicationContext
     // Non-observable retry holder — does not trigger recomposition on mutation.
     val retryState = remember { AdRetryState() }
 
@@ -133,7 +140,9 @@ actual fun rememberMrecAd(
     val hasLoadStarted = remember { mutableStateOf(autoLoad) }
     DisposableEffect(adUnitId, adPlacement) {
         adView.placement = adPlacement
-        if (autoLoad) adView.loadAd()
+        if (autoLoad) {
+            scope.loadAdAfterWebViewWarmup(appContext, adView)
+        }
         onDispose {
             adView.setExtraParameter("allow_pause_auto_refresh_immediately", "true")
             adView.stopAutoRefresh()
@@ -153,14 +162,32 @@ actual fun rememberMrecAd(
                 isAdReady.value = false
                 hasFailed.value = false
                 hasLoadStarted.value = true
-                adView.loadAd()
+                scope.loadAdAfterWebViewWarmup(appContext, adView)
             },
             onStartLoad = {
                 if (!hasLoadStarted.value) {
                     hasLoadStarted.value = true
-                    adView.loadAd()
+                    scope.loadAdAfterWebViewWarmup(appContext, adView)
                 }
             }
         )
+    }
+}
+
+private fun CoroutineScope.loadAdAfterWebViewWarmup(
+    context: Context,
+    adView: MaxAdView,
+) {
+    launch {
+        warmUpWebViewProvider(context)
+        adView.loadAd()
+    }
+}
+
+private suspend fun warmUpWebViewProvider(context: Context) {
+    withContext(Dispatchers.IO) {
+        runCatching {
+            WebSettings.getDefaultUserAgent(context)
+        }
     }
 }
