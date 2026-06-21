@@ -15,38 +15,38 @@ actual class ApplovinInterstitialAd actual constructor(
     actual val adUnitId: String
 ) {
 
-    private var nativeAd: MAInterstitialAd? = null
+    private var interstitialAd: MAInterstitialAd? = null
     private var delegate: InterstitialAdDelegate? = null
 
     actual val isReady: Boolean
-        get() = nativeAd?.isReady() ?: false
+        get() = interstitialAd?.isReady() ?: false
 
     actual fun initialize() {
-        if (nativeAd == null) {
-            nativeAd = MAInterstitialAd(adUnitId)
-            delegate?.let { nativeAd?.setDelegate(it) }
+        if (interstitialAd == null) {
+            interstitialAd = MAInterstitialAd(adUnitId)
+            delegate?.let { interstitialAd?.setDelegate(it) }
         }
     }
 
     actual fun loadAd() {
         // Lazily initialize so callers do not need to call initialize() explicitly.
         initialize()
-        nativeAd?.loadAd()
+        interstitialAd?.loadAd()
     }
 
     actual fun showAd() {
-        if (nativeAd?.isReady() == true) {
-            nativeAd?.showAd()
+        if (interstitialAd?.isReady() == true) {
+            interstitialAd?.showAd()
         }
     }
 
     actual fun setListener(listener: AdListener) {
         delegate = InterstitialAdDelegate(adUnitId, listener)
-        nativeAd?.setDelegate(delegate)
+        interstitialAd?.setDelegate(delegate)
     }
 
     actual fun destroy() {
-        nativeAd = null
+        interstitialAd = null
         delegate = null
     }
 }

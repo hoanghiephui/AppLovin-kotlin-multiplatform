@@ -60,4 +60,17 @@ class NativeAdPlacerTest {
         assertEquals((0 until 10).map { "shelf_$it" }, contentKeys)
         assertFalse(contentKeys.groupingBy { it }.eachCount().any { it.value > 1 })
     }
+
+    @Test
+    fun nativeAdReadyLayoutPreservesDistinctDiscoverAdPositions() {
+        val layout = nativeAdReadyLayout(
+            adIndices = intArrayOf(2, 5, 8, 11),
+            readyAdCount = 4,
+            contentCount = 20,
+        )
+
+        val adPositions = (0 until layout.itemCount).filter(layout::isAdAt)
+
+        assertEquals(listOf(2, 5, 8, 11), adPositions)
+    }
 }

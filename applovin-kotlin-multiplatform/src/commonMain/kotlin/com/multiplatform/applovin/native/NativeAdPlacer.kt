@@ -585,10 +585,9 @@ fun rememberNativeAdPlacer(
     // adStateAt() uses `slot % adPool.size` to cycle them across multiple positions, allowing
     // e.g. 7 ad slots with 4 unique creatives in a 30-item feed.
     //
-    // Crash safety: the calling screen must pre-compute ready-ad positions atomically via
-    // derivedStateOf BEFORE the lazy items block (see readyAdPositions in each screen).
-    // This prevents the key-lambda race condition that previously caused:
-    //   IllegalArgumentException: Key dir_X was used multiple times
+    // Crash safety: Lazy layouts should call readyLayoutSnapshot() once before their
+    // items block and use that snapshot for count, keys, content types, and item bodies.
+    // This prevents key/body mapping races when a native ad becomes ready mid-pass.
     return remember(adUnitId, adPlacement, layout, fixedPositions, repeatingInterval, maxAdCount, pool) {
         NativeAdPlacerState(
             adPool = pool,
