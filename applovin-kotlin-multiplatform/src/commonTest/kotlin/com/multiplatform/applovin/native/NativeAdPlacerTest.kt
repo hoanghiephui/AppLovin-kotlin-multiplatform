@@ -2,6 +2,7 @@ package com.multiplatform.applovin.native
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 class NativeAdPlacerTest {
     @Test
@@ -41,5 +42,22 @@ class NativeAdPlacerTest {
         )
 
         assertEquals(emptyList(), slots)
+    }
+
+    @Test
+    fun nativeAdReadyLayoutKeepsContentKeysUniqueWhenReadyAdsAreInserted() {
+        val layout = nativeAdReadyLayout(
+            adIndices = intArrayOf(2, 5, 8, 11),
+            readyAdCount = 2,
+            contentCount = 10,
+        )
+
+        val contentKeys = (0 until layout.itemCount)
+            .filterNot(layout::isAdAt)
+            .map { index -> "shelf_${layout.contentIndexFor(index)}" }
+
+        assertEquals(12, layout.itemCount)
+        assertEquals((0 until 10).map { "shelf_$it" }, contentKeys)
+        assertFalse(contentKeys.groupingBy { it }.eachCount().any { it.value > 1 })
     }
 }

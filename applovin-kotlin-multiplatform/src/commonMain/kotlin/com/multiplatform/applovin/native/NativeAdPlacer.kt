@@ -1,6 +1,7 @@
 package com.multiplatform.applovin.native
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
@@ -349,6 +350,23 @@ class NativeAdPlacerState(
     }
 
     /**
+     * Captures the ready-ad feed mapping once for a Lazy layout pass.
+     *
+     * Compose LazyList calls key, content type, and item content lambdas at different
+     * points in the frame. Reading [NativeAdState.isAdReady] independently from those
+     * lambdas can make the same virtual index map to different content when an ad
+     * finishes loading mid-pass, which can duplicate shelf keys. Build one snapshot
+     * during composition and use it for every LazyList lambda in that pass.
+     */
+    fun readyLayoutSnapshot(contentCount: Int): NativeAdReadyLayout {
+        return nativeAdReadyLayout(
+            adIndices = adIndices,
+            readyAdCount = readyPrefixVisibleCount(contentCount),
+            contentCount = contentCount,
+        )
+    }
+
+    /**
      * Like [contentIndexFor] but only subtracts **ready** ad positions that appear before
      * [adjustedIndex] in the combined stream.
      *
@@ -369,6 +387,50 @@ class NativeAdPlacerState(
         }
         return adjustedIndex - readyAdsBeforeIndex
     }
+}
+
+@Immutable
+class NativeAdReadyLayout internal constructor(
+    val itemCount: Int,
+    private val readyAdPositions: IntArray,
+) {
+    private val readyAdPositionSet: Set<Int> = readyAdPositions.toHashSet()
+
+    fun isAdAt(adjustedIndex: Int): Boolean = adjustedIndex in readyAdPositionSet
+
+    fun contentIndexFor(adjustedIndex: Int): Int {
+        var lo = 0
+        var hi = readyAdPositions.size
+        while (lo < hi) {
+            val mid = (lo + hi) ushr 1
+            if (readyAdPositions[mid] < adjustedIndex) lo = mid + 1 else hi = mid
+        }
+        return adjustedIndex - lo
+    }
+}
+
+internal fun nativeAdReadyLayout(
+    adIndices: IntArray,
+    readyAdCount: Int,
+    contentCount: Int,
+): NativeAdReadyLayout {
+    val boundedReadyAdCount = readyAdCount.coerceIn(0, adIndices.size)
+    val readyPositions = IntArray(boundedReadyAdCount)
+    var visibleAds = 0
+    for (slot in 0 until boundedReadyAdCount) {
+        if (adIndices[slot] - slot >= contentCount) break
+        readyPositions[visibleAds] = adIndices[slot]
+        visibleAds++
+    }
+    val trimmedPositions = if (visibleAds == readyPositions.size) {
+        readyPositions
+    } else {
+        readyPositions.copyOf(visibleAds)
+    }
+    return NativeAdReadyLayout(
+        itemCount = contentCount + visibleAds,
+        readyAdPositions = trimmedPositions,
+    )
 }
 
 /**
