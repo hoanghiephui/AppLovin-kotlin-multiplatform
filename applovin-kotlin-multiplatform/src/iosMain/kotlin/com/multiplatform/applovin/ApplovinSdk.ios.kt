@@ -3,15 +3,15 @@
 package com.multiplatform.applovin
 
 import co.touchlab.kermit.Logger
-import cocoapods.AppLovinSDK.ALMediationProviderMAX
-import cocoapods.AppLovinSDK.ALSdk
-import cocoapods.AppLovinSDK.ALSdkInitializationConfiguration
 import com.multiplatform.applovin.ads.ApplovinAdView
 import com.multiplatform.applovin.ads.ApplovinInterstitialAd
 import com.multiplatform.applovin.ads.ApplovinRewardedAd
 import com.multiplatform.applovin.banner.AdFormat
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSURL
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.ALMediationProviderMAX
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.ALSdk
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.ALSdkInitializationConfiguration
 
 actual class ApplovinSdk {
     private val logger = Logger.withTag("AppLovin")

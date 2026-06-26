@@ -2,10 +2,10 @@
 
 package com.multiplatform.applovin.ads
 
-import cocoapods.AppLovinSDK.MAAd
-import cocoapods.AppLovinSDK.MAAdDelegateProtocol
-import cocoapods.AppLovinSDK.MAError
-import cocoapods.AppLovinSDK.MAInterstitialAd
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MAAd
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MAAdDelegateProtocol
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MAError
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MAInterstitialAd
 import com.multiplatform.applovin.utils.AdListener
 import com.multiplatform.applovin.utils.AdType
 import kotlinx.cinterop.ExperimentalForeignApi

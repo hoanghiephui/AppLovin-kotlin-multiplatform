@@ -10,12 +10,6 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import cocoapods.AppLovinSDK.MAAd
-import cocoapods.AppLovinSDK.MAError
-import cocoapods.AppLovinSDK.MANativeAdDelegateProtocol
-import cocoapods.AppLovinSDK.MANativeAdLoader
-import cocoapods.AppLovinSDK.MANativeAdView
-import cocoapods.AppLovinSDK.MANativeAdViewBinder
 import com.multiplatform.applovin.utils.AdRetryState
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.delay
@@ -30,6 +24,12 @@ import platform.UIKit.UIImageView
 import platform.UIKit.UILabel
 import platform.UIKit.UIView
 import platform.darwin.NSObject
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MAAd
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MAError
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MANativeAdDelegateProtocol
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MANativeAdLoader
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MANativeAdView
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MANativeAdViewBinder
 import kotlin.time.Duration.Companion.milliseconds
 
 // Integer view tags matching those used in the official AppLovin iOS sample (XIB-based).

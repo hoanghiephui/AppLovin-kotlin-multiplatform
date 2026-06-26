@@ -9,13 +9,13 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import cocoapods.AppLovinSDK.MAAd
-import cocoapods.AppLovinSDK.MAAdFormat
-import cocoapods.AppLovinSDK.MAAdView
-import cocoapods.AppLovinSDK.MAAdViewAdDelegateProtocol
-import cocoapods.AppLovinSDK.MAAdViewAdaptiveType
-import cocoapods.AppLovinSDK.MAAdViewConfiguration
-import cocoapods.AppLovinSDK.MAError
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MAAd
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MAAdFormat
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MAAdView
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MAAdViewAdDelegateProtocol
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MAAdViewAdaptiveType
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MAAdViewConfiguration
+import swiftPMImport.twix.watch.applovin.kotlin.multiplatform.MAError
 import com.multiplatform.applovin.utils.AdRetryState
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
@@ -24,8 +24,8 @@ import kotlinx.coroutines.launch
 import platform.CoreGraphics.CGRectMake
 import platform.UIKit.UIColor
 import platform.UIKit.UIScreen
-import platform.UIKit.UIView
 import platform.darwin.NSObject
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * iOS implementation of [BannerAdState].
@@ -104,7 +104,7 @@ actual fun rememberBannerAd(
                     // Exponential back-off: retry 1 → 2s, retry 2 → 4s, retry 3 → 8s.
                     val delayMs = retryState.incrementAndGetDelayMs()
                     retryState.setJob(scope.launch {
-                        delay(delayMs)
+                        delay(delayMs.milliseconds)
                         adView.loadAd()
                     })
                 } else {

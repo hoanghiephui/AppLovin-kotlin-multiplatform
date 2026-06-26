@@ -10,6 +10,7 @@ Pod::Spec.new do |spec|
     spec.libraries                = 'c++'
     spec.ios.deployment_target    = '15.0'
     spec.dependency 'AppLovinMediationInMobiAdapter'
+    spec.dependency 'AppLovinMediationYandexAdapter'
     spec.dependency 'AppLovinSDK', '13.6.3'
     if !Dir.exist?('build/cocoapods/framework/applovin_kotlin_multiplatform.framework') || Dir.empty?('build/cocoapods/framework/applovin_kotlin_multiplatform.framework')
         raise "

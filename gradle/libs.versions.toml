@@ -4,18 +4,17 @@ kotlin = "2.4.0"
 android-minSdk = "26"
 android-compileSdk = "37"
 kotlinxCoroutinesCore = "1.11.0"
-lifecycleProcess = "2.10.0"
+lifecycleProcess = "2.11.0"
 compose = "1.11.1"
 compose-compiler = "2.4.0"
-vanniktech = "0.36.0"
+vanniktech = "0.37.0"
 swiftklib = "0.6.4"
 applovin-sdk = "13.6.3"
 cocopods = "2.4.0"
 services-ads-identifier = "18.3.0"
-mediation-google = "25.3.0.0"
 google-ump = "4.0.0"
 kermit = "2.1.0"
-mediation-ironsource = "9.4.3.0.0"
+mediation-ironsource = "9.4.4.0.0"
 
 [libraries]
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
@@ -23,7 +22,6 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycleProcess" }
 applovin-sdk = { group = "com.applovin", name = "applovin-sdk", version.ref = "applovin-sdk" }
 services-ads-identifier = { module = "com.google.android.gms:play-services-ads-identifier", version.ref = "services-ads-identifier" }
-applovin-mediation-google = { module = "com.applovin.mediation:google-adapter", version.ref = "mediation-google" }
 applovin-mediation-ironsource = { module = "com.applovin.mediation:ironsource-adapter", version.ref = "mediation-ironsource" }
 google-user-messaging-platform = { module = "com.google.android.ump:user-messaging-platform", version.ref = "google-ump" }
 
