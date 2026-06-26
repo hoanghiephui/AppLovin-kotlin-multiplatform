@@ -28,3 +28,4 @@ gradle.properties
 
 # Logs
 *.log
+.swiftpm-locks
