@@ -72,6 +72,8 @@ kotlin {
             implementation("com.applovin.mediation:inmobi-adapter:11.3.0.0")
             //api("com.applovin.mediation:ironsource-adapter:9.4.3.0.0")
             implementation("com.applovin.mediation:yandex-adapter:8.1.0.0")
+            implementation("com.applovin.mediation:unityads-adapter:4.19.0.0")
+            implementation(libs.cronet.api)
         }
     }
 }

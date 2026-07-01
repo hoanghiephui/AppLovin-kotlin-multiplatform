@@ -15,6 +15,7 @@ services-ads-identifier = "18.3.0"
 google-ump = "4.0.0"
 kermit = "2.1.0"
 mediation-ironsource = "9.4.4.0.0"
+cronet = "143.7445.0"
 
 [libraries]
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
@@ -24,6 +25,7 @@ applovin-sdk = { group = "com.applovin", name = "applovin-sdk", version.ref = "a
 services-ads-identifier = { module = "com.google.android.gms:play-services-ads-identifier", version.ref = "services-ads-identifier" }
 applovin-mediation-ironsource = { module = "com.applovin.mediation:ironsource-adapter", version.ref = "mediation-ironsource" }
 google-user-messaging-platform = { module = "com.google.android.ump:user-messaging-platform", version.ref = "google-ump" }
+cronet-api = { module = "org.chromium.net:cronet-api", version.ref = "cronet" }
 
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
