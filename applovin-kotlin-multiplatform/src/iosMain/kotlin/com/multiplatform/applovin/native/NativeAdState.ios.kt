@@ -98,6 +98,14 @@ private fun UIButton.applyNativeAdCtaStyle() {
     clipsToBounds = true
 }
 
+private fun UIView.clearNativeAdBackgroundRecursively() {
+    backgroundColor = UIColor.clearColor
+    opaque = false
+    subviews.forEach { subview ->
+        (subview as? UIView)?.clearNativeAdBackgroundRecursively()
+    }
+}
+
 /**
  * Applies app-theme colours after AppLovin has populated the native template.
  *
@@ -112,14 +120,13 @@ private fun applyNativeAdColors(
     val secondaryTextColor = nativeAdSecondaryTextColor(isDark)
 
     if (layout == NativeAdLayout.Small) {
-        adView.backgroundColor = UIColor.clearColor
-        adView.opaque = false
+        adView.clearNativeAdBackgroundRecursively()
     } else {
         adView.backgroundColor = nativeAdSurfaceColor(isDark)
         adView.opaque = true
-    }
-    adView.subviews.forEach { subview ->
-        (subview as? UIView)?.backgroundColor = UIColor.clearColor
+        adView.subviews.forEach { subview ->
+            (subview as? UIView)?.backgroundColor = UIColor.clearColor
+        }
     }
     (adView.viewWithTag(TAG_TITLE) as? UILabel)?.textColor = nativeAdPrimaryTextColor(isDark)
     (adView.viewWithTag(TAG_ADVERTISER) as? UILabel)?.textColor = secondaryTextColor
@@ -298,7 +305,7 @@ private fun buildSmallMANativeAdView(): MANativeAdView = MANativeAdView().apply 
 
     NSLayoutConstraint.activateConstraints(
         listOf(
-            heightAnchor.constraintGreaterThanOrEqualToConstant(130.0),
+            heightAnchor.constraintLessThanOrEqualToConstant(130.0),
 
             mediaView.topAnchor.constraintEqualToAnchor(contentGuide.topAnchor),
             mediaView.leadingAnchor.constraintEqualToAnchor(leadingAnchor, 10.0),
@@ -313,6 +320,7 @@ private fun buildSmallMANativeAdView(): MANativeAdView = MANativeAdView().apply 
             advertiserLabel.topAnchor.constraintEqualToAnchor(mediaView.bottomAnchor),
             advertiserLabel.leadingAnchor.constraintEqualToAnchor(mediaView.leadingAnchor),
             advertiserLabel.trailingAnchor.constraintLessThanOrEqualToAnchor(mediaView.trailingAnchor),
+            advertiserLabel.bottomAnchor.constraintLessThanOrEqualToAnchor(contentGuide.bottomAnchor),
 
             iconView.topAnchor.constraintEqualToAnchor(contentGuide.topAnchor),
             iconView.leadingAnchor.constraintEqualToAnchor(contentGuide.leadingAnchor),
@@ -340,8 +348,8 @@ private fun buildSmallMANativeAdView(): MANativeAdView = MANativeAdView().apply 
             ctaButton.topAnchor.constraintEqualToAnchor(starRatingView.bottomAnchor, 2.0),
             ctaButton.leadingAnchor.constraintEqualToAnchor(contentGuide.leadingAnchor),
             ctaButton.trailingAnchor.constraintEqualToAnchor(contentGuide.trailingAnchor),
-            ctaButton.bottomAnchor.constraintEqualToAnchor(contentGuide.bottomAnchor),
             ctaButton.heightAnchor.constraintEqualToConstant(32.0),
+            ctaButton.bottomAnchor.constraintEqualToAnchor(contentGuide.bottomAnchor),
         )
     )
 }

@@ -47,11 +47,13 @@ private const val CTA_CORNER_RADIUS_DP = 12f
  *
  * @param adView inflated [MaxNativeAdView] to style.
  * @param isDark `true` when the app is currently in dark mode.
+ * @param layout the native template variant being styled.
  * @param ids resource IDs registered by the host app via [configureNativeAdResourceIds].
  */
 private fun applyNativeAdColors(
     adView: MaxNativeAdView,
     isDark: Boolean,
+    layout: NativeAdLayout,
     ids: NativeAdResourceIds,
 ) {
     val titleColor = if (isDark) Color.WHITE else Color.BLACK
@@ -59,9 +61,16 @@ private fun applyNativeAdColors(
     val ctaBg      = ColorStateList.valueOf("#0F7DEC".toColorInt())
     val ctaText    = Color.WHITE
 
+    if (layout == NativeAdLayout.Small) {
+        adView.setBackgroundColor(Color.TRANSPARENT)
+    }
+
     // post() defers until after AppLovin finishes populating sub-views on the main thread,
     // preventing our colors from being overwritten by the ad-binding pass.
     adView.post {
+        if (layout == NativeAdLayout.Small) {
+            adView.setBackgroundColor(Color.TRANSPARENT)
+        }
         adView.findViewById<TextView>(ids.titleTextViewId)?.setTextColor(titleColor)
         adView.findViewById<TextView>(ids.advertiserTextViewId)?.setTextColor(bodyColor)
         adView.findViewById<TextView>(ids.bodyTextViewId)?.setTextColor(bodyColor)
@@ -219,7 +228,7 @@ actual fun rememberNativeAd(
             com.google.android.material.R.style.Theme_Material3_DayNight,
         )
         MaxNativeAdView(binder, themedContext).also {
-            applyNativeAdColors(it, isDarkState.value, nativeAdResourceIds)
+            applyNativeAdColors(it, isDarkState.value, layout, nativeAdResourceIds)
         }
     }
 
@@ -234,6 +243,7 @@ actual fun rememberNativeAd(
                     loadedAdHolder.ad = ad
                     retryState.reset()
                     isAdReady.value = true
+                    applyNativeAdColors(nativeAdView, isDarkState.value, layout, nativeAdResourceIds)
                     onAdLoaded()
                 }
 

@@ -14,7 +14,7 @@ cocopods = "2.4.0"
 services-ads-identifier = "18.3.0"
 google-ump = "4.0.0"
 kermit = "2.1.0"
-mediation-ironsource = "9.4.4.0.0"
+mediation-ironsource = "9.5.0.0.0"
 cronet = "143.7445.0"
 
 [libraries]
