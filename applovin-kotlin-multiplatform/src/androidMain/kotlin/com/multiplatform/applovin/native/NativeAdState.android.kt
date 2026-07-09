@@ -283,7 +283,11 @@ actual fun rememberNativeAd(
     // accidentally invokes it on an already-loading slot.
     val hasLoadStarted = remember { mutableStateOf(autoLoad) }
     DisposableEffect(adUnitId, adPlacement) {
-        if (autoLoad) nativeAdLoader.loadAd(nativeAdView)
+        if (autoLoad) {
+            // BUGFIX: Defer loadAd to next frame to avoid DexLoadReporter crash (BugSnag #6a074b168c3285d1a529cb0a)
+            // loadAd triggers WebViewFactory.getProvider synchronously during composition.
+            scope.launch { nativeAdLoader.loadAd(nativeAdView) }
+        }
         onDispose {
             retryState.reset()
             loadedAdHolder.ad?.let { nativeAdLoader.destroy(it) }
@@ -301,13 +305,15 @@ actual fun rememberNativeAd(
                 isAdReady.value = false
                 hasFailed.value = false
                 hasLoadStarted.value = true
-                nativeAdLoader.loadAd(nativeAdView)
+                // BUGFIX: Defer loadAd for manually triggered refresh as well
+                scope.launch { nativeAdLoader.loadAd(nativeAdView) }
             },
             onStartLoad = {
                 // Guard: only start once; subsequent calls are no-ops.
                 if (!hasLoadStarted.value) {
                     hasLoadStarted.value = true
-                    nativeAdLoader.loadAd(nativeAdView)
+                    // BUGFIX: Defer loadAd to avoid DexLoadReporter/WebViewFactory crash
+                    scope.launch { nativeAdLoader.loadAd(nativeAdView) }
                 }
             },
         )
