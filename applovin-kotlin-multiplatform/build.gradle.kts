@@ -31,7 +31,7 @@ kotlin {
         )
         swiftPackage(
             url = url("https://github.com/AppLovin/AppLovin-MAX-Swift-Package-InMobi.git"),
-            version = exact("11030000.0.0"),
+            version = exact("11030001.0.0"),
             products = listOf(product("AppLovinMediationInMobiAdapter")),
         )
     }
