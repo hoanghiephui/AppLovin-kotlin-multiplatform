@@ -67,11 +67,11 @@ kotlin {
             implementation(libs.applovin.sdk)
             implementation(libs.google.user.messaging.platform)
             implementation(libs.services.ads.identifier)
-            implementation("androidx.constraintlayout:constraintlayout:2.2.1")
+            implementation("androidx.constraintlayout:constraintlayout:2.2.2")
             implementation("com.google.android.material:material:1.14.0")
             implementation("com.applovin.mediation:inmobi-adapter:11.4.0.0")
             //api("com.applovin.mediation:ironsource-adapter:9.4.3.0.0")
-            implementation("com.applovin.mediation:yandex-adapter:8.2.0.1")
+            implementation("com.applovin.mediation:yandex-adapter:8.3.0.0")
             implementation("com.applovin.mediation:unityads-adapter:4.19.0.1")
             implementation(libs.cronet.api)
         }
