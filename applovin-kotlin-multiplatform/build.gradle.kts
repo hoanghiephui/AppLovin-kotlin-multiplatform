@@ -69,9 +69,8 @@ kotlin {
             implementation(libs.services.ads.identifier)
             implementation("androidx.constraintlayout:constraintlayout:2.2.2")
             implementation("com.google.android.material:material:1.14.0")
-            implementation("com.applovin.mediation:inmobi-adapter:11.4.1.1")
+            implementation("com.applovin.mediation:inmobi-adapter:11.4.1.2")
             implementation("com.applovin.mediation:ironsource-adapter:9.6.0.0.0")
-            implementation("com.applovin.mediation:yandex-adapter:8.3.0.0")
             implementation("com.applovin.mediation:unityads-adapter:4.20.0.0")
             implementation(libs.cronet.api)
         }
