@@ -1,11 +1,11 @@
 [versions]
-agp = "9.4.0"
+agp = "9.4.1"
 kotlin = "2.4.20"
 android-minSdk = "26"
 android-compileSdk = "37"
 kotlinxCoroutinesCore = "1.11.0"
 lifecycleProcess = "2.11.0"
-compose = "1.12.0"
+compose = "1.12.1"
 compose-compiler = "2.4.20"
 vanniktech = "0.37.0"
 swiftklib = "0.6.4"
@@ -13,9 +13,9 @@ applovin-sdk = "13.6.4"
 cocopods = "2.4.20"
 services-ads-identifier = "18.3.0"
 google-ump = "4.0.0"
-kermit = "2.1.0"
-mediation-ironsource = "9.6.0.0.0"
-cronet = "500.0.2"
+kermit = "2.2.0"
+mediation-ironsource = "9.6.1.0.0"
+cronet = "500.1.0"
 
 [libraries]
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
