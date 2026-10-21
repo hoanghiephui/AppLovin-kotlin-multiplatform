@@ -32,30 +32,25 @@ actual class ApplovinSdk {
         context ?: throw IllegalStateException("Context not set. Call setContext() first")
         val initConfig = AppLovinSdkInitializationConfiguration.builder(sdkKey)
             .setMediationProvider(AppLovinMediationProvider.MAX)
-            .setTestDeviceAdvertisingIds(testDeviceIds)
             .build()
-
-        AppLovinSdk.getInstance(context).apply {
-            settings.apply {
-                //settings.userIdentifier = userIdentifier
-                setVerboseLogging(debugMode)
-                isCreativeDebuggerEnabled = debugMode
-                termsAndPrivacyPolicyFlowSettings.apply {
-                    isEnabled = true
-                    privacyPolicyUri = privacyPolicyUrl.toUri()
-                    termsOfServiceUri = termsOfServiceUrl.toUri()
-                    setShowTermsAndPrivacyPolicyAlertInGdpr(showTermsAndPrivacyAlertInGdpr)
-                    if (debugMode) {
-                        debugUserGeography = AppLovinSdkConfiguration.ConsentFlowUserGeography.GDPR
-                    }
+        val settings = AppLovinSdk.getInstance( context ).settings
+        settings.apply {
+            settings.userIdentifier = userIdentifier
+            setVerboseLogging(debugMode)
+            isCreativeDebuggerEnabled = debugMode
+            /*termsAndPrivacyPolicyFlowSettings.apply {
+                isEnabled = true
+                privacyPolicyUri = privacyPolicyUrl.toUri()
+                termsOfServiceUri = termsOfServiceUrl.toUri()
+                setShowTermsAndPrivacyPolicyAlertInGdpr(showTermsAndPrivacyAlertInGdpr)
+                if (debugMode) {
+                    debugUserGeography = AppLovinSdkConfiguration.ConsentFlowUserGeography.GDPR
                 }
-            }
-
-            initialize(initConfig) {
-                onInitialized()
-            }
+            }*/
         }
-
+        AppLovinSdk.getInstance(context).initialize(initConfig) { sdkConfig ->
+            onInitialized()
+        }
     }
 
     actual fun createBanner(adUnitId: String): ApplovinAdView {
