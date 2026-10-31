@@ -26,12 +26,12 @@ kotlin {
     swiftPMDependencies {
         swiftPackage(
             url = url("https://github.com/AppLovin/AppLovin-MAX-Swift-Package.git"),
-            version = exact("13.6.4"),
+            version = exact("13.7.0"),
             products = listOf(product("AppLovinSDK")),
         )
         swiftPackage(
             url = url("https://github.com/AppLovin/AppLovin-MAX-Swift-Package-InMobi.git"),
-            version = exact("11040101.0.0"),
+            version = exact("11050000.0.0"),
             products = listOf(product("AppLovinMediationInMobiAdapter")),
         )
     }
@@ -69,9 +69,9 @@ kotlin {
             implementation(libs.services.ads.identifier)
             implementation("androidx.constraintlayout:constraintlayout:2.2.2")
             implementation("com.google.android.material:material:1.14.0")
-            implementation("com.applovin.mediation:inmobi-adapter:11.5.0.0")
-            implementation("com.applovin.mediation:ironsource-adapter:9.6.1.0.0")
-            implementation("com.applovin.mediation:unityads-adapter:4.21.0.0")
+            implementation("com.applovin.mediation:inmobi-adapter:11.5.1.0")
+            implementation("com.applovin.mediation:ironsource-adapter:9.7.0.0.0")
+            implementation("com.applovin.mediation:unityads-adapter:4.21.0.1")
             implementation(libs.cronet.api)
         }
     }
