@@ -3,6 +3,7 @@ package com.multiplatform.applovin.mrec
 import android.widget.FrameLayout
 import android.view.ViewGroup
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -33,6 +34,7 @@ actual fun MrecAdView(
 ) {
     val adView = adState.nativeAdView
     val minWidthDp = 300.dp
+    val adHeightDp = if (adState.isTablet) 90.dp else 250.dp
 
     AndroidView(
         factory = { ctx ->
@@ -83,7 +85,9 @@ actual fun MrecAdView(
         },
         modifier = modifier
             .fillMaxWidth()
-            .widthIn(min = minWidthDp),
+            .widthIn(min = minWidthDp)
+            // LazyColumn measures items with unbounded height. Bound the native view to its ad format.
+            .height(adHeightDp),
     )
 }
 
