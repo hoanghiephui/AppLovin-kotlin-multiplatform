@@ -70,8 +70,8 @@ kotlin {
             implementation("androidx.constraintlayout:constraintlayout:2.2.2")
             implementation("com.google.android.material:material:1.14.0")
             implementation("com.applovin.mediation:inmobi-adapter:11.5.1.0")
-            implementation("com.applovin.mediation:ironsource-adapter:9.7.0.0.0")
-            implementation("com.applovin.mediation:unityads-adapter:4.21.0.1")
+            implementation("com.applovin.mediation:ironsource-adapter:9.8.0.0.0")
+            implementation("com.applovin.mediation:unityads-adapter:4.22.0.0")
             implementation(libs.cronet.api)
         }
     }
