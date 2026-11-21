@@ -29,10 +29,16 @@ actual class ApplovinRewardedAd actual constructor(actual val adUnitId: String) 
         rewardedAds?.loadAd()
     }
 
+    private var customData: String? = null
+
+    actual fun setCustomData(customData: String?) {
+        this.customData = customData
+    }
+
     actual fun showAd() {
         if (rewardedAds?.isReady == true) {
             @Suppress("DEPRECATION")
-            rewardedAds?.showAd()
+            rewardedAds?.showAd(null, customData)
         }
     }
 
@@ -44,7 +50,7 @@ actual class ApplovinRewardedAd actual constructor(actual val adUnitId: String) 
      */
     fun showAd(activity: android.app.Activity) {
         if (rewardedAds?.isReady == true) {
-            rewardedAds?.showAd(activity)
+            rewardedAds?.showAd(null, customData, activity)
         }
     }
 

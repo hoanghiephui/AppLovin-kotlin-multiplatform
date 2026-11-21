@@ -35,9 +35,15 @@ actual class ApplovinRewardedAd actual constructor(
         nativeAd?.loadAd()
     }
 
+    private var customData: String? = null
+
+    actual fun setCustomData(customData: String?) {
+        this.customData = customData
+    }
+
     actual fun showAd() {
         if (nativeAd?.isReady() == true) {
-            nativeAd?.showAd()
+            nativeAd?.showAdForPlacement(null, customData)
         }
     }
 

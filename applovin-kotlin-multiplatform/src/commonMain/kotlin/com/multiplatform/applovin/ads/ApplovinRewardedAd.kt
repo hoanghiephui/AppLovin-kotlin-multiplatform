@@ -15,6 +15,12 @@ expect class ApplovinRewardedAd(
     fun initialize()
     fun loadAd()
     fun showAd()
+
+    /**
+     * Opaque string forwarded by MAX to your server-side reward callback (the `{CUSTOM_DATA}` macro).
+     * Applies to the NEXT [showAd]; pass null to clear it.
+     */
+    fun setCustomData(customData: String?)
     fun setListener(listener: AdListener)
     fun setRewardListener(onRewarded: (reward: String, amount: Int) -> Unit)
     fun destroy()
