@@ -39,9 +39,6 @@ actual class ApplovinSdk {
             }
             .build()
         val settings = ALSdk.shared().settings
-        //settings.userIdentifier = userIdentifier
-        settings.verboseLoggingEnabled = debugMode
-        settings.setCreativeDebuggerEnabled(debugMode)
         settings.termsAndPrivacyPolicyFlowSettings.apply {
             enabled = true
             privacyPolicyURL = NSURL.URLWithString(privacyPolicyUrl)
