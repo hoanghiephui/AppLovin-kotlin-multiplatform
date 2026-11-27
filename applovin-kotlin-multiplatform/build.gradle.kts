@@ -26,7 +26,7 @@ kotlin {
     swiftPMDependencies {
         swiftPackage(
             url = url("https://github.com/AppLovin/AppLovin-MAX-Swift-Package.git"),
-            version = exact("13.7.0"),
+            version = exact("13.7.1"),
             products = listOf(product("AppLovinSDK")),
         )
         swiftPackage(
